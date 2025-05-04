@@ -26,7 +26,7 @@ class Post(Base, BaseModel):
     
     # 关联关系
     source = relationship("Source", back_populates="posts")
-    # product = relationship("Product", back_populates="post", uselist=False)
+    product = relationship("Product", back_populates="post", uselist=False)
     
     def __repr__(self):
         return f"<Post {self.title}>" 
