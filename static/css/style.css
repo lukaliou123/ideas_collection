@@ -1,0 +1,80 @@
+/* 
+   创业产品信息收集系统 - 主样式表
+*/
+
+/* 通用样式 */
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+}
+
+/* 产品卡片样式 */
+.product-card {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.product-card .product-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.product-card .product-description {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.product-card .product-meta {
+    color: #888;
+    font-size: 0.9em;
+}
+
+/* 标签样式 */
+.tag {
+    display: inline-block;
+    background-color: #f0f4f8;
+    color: #4a6fa5;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+/* 数据源徽章 */
+.source-badge {
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+}
+
+.source-hackernews {
+    background-color: #ff6600;
+    color: white;
+}
+
+.source-indiehackers {
+    background-color: #0e2439;
+    color: white;
+}
+
+/* 自定义按钮 */
+.btn-primary {
+    background-color: #3f72af;
+    border-color: #3f72af;
+}
+
+.btn-primary:hover {
+    background-color: #345d8a;
+    border-color: #345d8a;
+} 

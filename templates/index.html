@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 创业产品信息收集系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">创业产品信息收集系统</h1>
+            <p class="lead">自动化收集、分析和存储来自HackerNews、Indie Hackers等网站的创业产品信息与讨论的系统。</p>
+            <hr class="my-4">
+            <p>浏览最新的创业产品和讨论，获取灵感和市场洞察。</p>
+            <a class="btn btn-primary btn-lg" href="/products" role="button">浏览产品</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12 mb-4">
+        <h2>最新收集的产品</h2>
+    </div>
+    
+    <!-- 产品列表将在实际实现中动态生成 -->
+    <div class="col-md-4">
+        <div class="product-card">
+            <h3 class="product-title">示例产品 1</h3>
+            <p class="product-description">这是一个示例产品描述，展示产品信息的布局。</p>
+            <div class="mb-2">
+                <span class="tag">SaaS</span>
+                <span class="tag">AI</span>
+            </div>
+            <div class="product-meta">
+                <span class="source-badge source-hackernews">HackerNews</span>
+                <span class="ms-2">2023-07-15</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="product-card">
+            <h3 class="product-title">示例产品 2</h3>
+            <p class="product-description">另一个示例产品，展示多个产品的布局方式。</p>
+            <div class="mb-2">
+                <span class="tag">工具</span>
+                <span class="tag">开发者</span>
+            </div>
+            <div class="product-meta">
+                <span class="source-badge source-indiehackers">IndieHackers</span>
+                <span class="ms-2">2023-07-14</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="product-card">
+            <h3 class="product-title">示例产品 3</h3>
+            <p class="product-description">第三个示例产品，用于展示界面布局。</p>
+            <div class="mb-2">
+                <span class="tag">电子商务</span>
+                <span class="tag">营销</span>
+            </div>
+            <div class="product-meta">
+                <span class="source-badge source-hackernews">HackerNews</span>
+                <span class="ms-2">2023-07-13</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 mt-4 text-center">
+        <a href="/products" class="btn btn-outline-primary">查看更多产品</a>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-12 mb-4">
+        <h2>数据来源</h2>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">HackerNews</h5>
+                <p class="card-text">来自技术创业社区Hacker News的"Show HN"帖子，展示用户创建的项目和产品。</p>
+                <a href="https://news.ycombinator.com/show" class="btn btn-sm btn-outline-secondary" target="_blank">访问来源</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Indie Hackers</h5>
+                <p class="card-text">独立开发者和创始人社区，分享他们构建盈利性在线业务的经验。</p>
+                <a href="https://www.indiehackers.com/" class="btn btn-sm btn-outline-secondary" target="_blank">访问来源</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
