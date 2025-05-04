@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     # API密钥
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: Optional[str] = "gpt-3.5-turbo"
     
     # 爬虫配置
     SCRAPER_INTERVAL: int = 3600  # 默认每小时运行一次
@@ -22,6 +23,10 @@ class Settings(BaseSettings):
     
     # 调度器配置
     ENABLE_SCHEDULER: bool = True  # 是否启用定时任务调度器
+    
+    # AI设置
+    ENABLE_AI_ANALYSIS: bool = True  # 是否启用AI分析
+    AI_ANALYSIS_MIN_POINTS: int = 10  # 启用AI分析的最低分数要求
     
     # 应用设置
     DEBUG: bool = False

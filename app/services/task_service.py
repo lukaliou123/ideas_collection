@@ -12,6 +12,7 @@ from app.core.database import SessionLocal
 from app.core.scheduler import scheduler
 from app.core.config import settings
 from app.services.hackernews_service import HackerNewsService
+from app.services.product_service import ProductService
 from app.utils.logger import logger
 
 class TaskService:
@@ -21,6 +22,11 @@ class TaskService:
     def register_tasks():
         """注册所有定时任务"""
         TaskService.register_hackernews_task()
+        
+        # 如果启用了AI分析，注册产品处理任务
+        if settings.ENABLE_AI_ANALYSIS:
+            TaskService.register_product_processing_task()
+        
         # 未来添加更多任务
         # TaskService.register_indiehackers_task()
         
@@ -34,6 +40,18 @@ class TaskService:
         scheduler.add_job(
             func=TaskService.run_hackernews_collection,
             job_id="collect_hackernews",
+            interval_seconds=interval
+        )
+    
+    @staticmethod
+    def register_product_processing_task():
+        """注册产品处理任务"""
+        # 设置为每天执行一次
+        interval = 24 * 60 * 60  # 24小时
+        
+        scheduler.add_job(
+            func=TaskService.run_product_processing,
+            job_id="process_products",
             interval_seconds=interval
         )
     
@@ -59,6 +77,40 @@ class TaskService:
             
         except Exception as e:
             logger.error(f"执行HackerNews数据收集任务时出错: {e}")
+            # 打印完整的异常堆栈
+            import traceback
+            logger.error(traceback.format_exc())
+            return 0
+            
+        finally:
+            db.close()
+    
+    @staticmethod
+    def run_product_processing():
+        """执行产品处理任务的包装函数"""
+        # 创建数据库会话
+        db = SessionLocal()
+        
+        try:
+            # 创建事件循环并执行异步任务
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # 创建产品服务
+            service = ProductService(db)
+            
+            # 运行异步任务并获取结果
+            min_points = settings.AI_ANALYSIS_MIN_POINTS
+            result = loop.run_until_complete(service.process_unprocessed_posts(min_points))
+            
+            # 关闭事件循环
+            loop.close()
+            
+            logger.info(f"产品处理任务执行完成，处理了 {result} 条帖子")
+            return result
+            
+        except Exception as e:
+            logger.error(f"执行产品处理任务时出错: {e}")
             # 打印完整的异常堆栈
             import traceback
             logger.error(traceback.format_exc())

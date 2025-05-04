@@ -75,6 +75,10 @@ def run_once(task_id=None):
             logger.info("开始执行HackerNews数据收集任务...")
             result = TaskService.run_hackernews_collection()
             logger.info(f"任务执行完成，收集了 {result} 条新帖子")
+        elif task_id == "products":
+            logger.info("开始执行产品处理任务...")
+            result = TaskService.run_product_processing()
+            logger.info(f"任务执行完成，处理了 {result} 条帖子")
         else:
             logger.error(f"未知任务ID: {task_id}")
             
@@ -102,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--task", 
         type=str, 
+        choices=["hackernews", "products"],
         help="指定要运行的任务ID，仅在--run-once时有效"
     )
     
