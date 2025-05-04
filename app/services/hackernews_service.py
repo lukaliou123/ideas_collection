@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.posts import Post
 from app.scrapers.hackernews import HackerNewsClient
+from app.services.content_service import ContentService
 from app.utils.logger import logger
 
 class HackerNewsService:
@@ -24,29 +25,53 @@ class HackerNewsService:
             # 获取帖子数据
             posts_data = await self.client.collect_show_hn_posts()
             saved_count = 0
+            duplicate_count = 0
             
             for post_data in posts_data:
-                # 检查帖子是否已存在
+                # 规范化帖子数据
+                normalized_data = ContentService.normalize_post_data("HackerNews", post_data)
+                
+                # 检查直接匹配的帖子是否已存在（原始ID匹配）
                 existing_post = self.db.query(Post).filter(
-                    Post.source_id == post_data['source_id'],
-                    Post.original_id == post_data['original_id']
+                    Post.source_id == normalized_data['source_id'],
+                    Post.original_id == normalized_data['original_id']
                 ).first()
                 
-                if not existing_post:
-                    # 添加收集时间
-                    post_data['collected_at'] = datetime.now()
-                    
-                    # 创建新帖子
-                    new_post = Post(**post_data)
-                    self.db.add(new_post)
-                    saved_count += 1
+                if existing_post:
+                    logger.debug(f"跳过已存在的帖子: {normalized_data['title']} (ID: {normalized_data['original_id']})")
+                    continue
+                
+                # 检查URL是否重复
+                if normalized_data['url']:
+                    is_duplicate_url = await ContentService.is_duplicate_url(self.db, normalized_data['url'])
+                    if is_duplicate_url:
+                        logger.debug(f"跳过URL重复的帖子: {normalized_data['title']} (URL: {normalized_data['url']})")
+                        duplicate_count += 1
+                        continue
+                
+                # 检查内容是否重复
+                duplicate_post = await ContentService.is_duplicate_content(
+                    self.db, 
+                    normalized_data['title'], 
+                    normalized_data.get('content', '')
+                )
+                
+                if duplicate_post:
+                    logger.debug(f"跳过内容相似的帖子: {normalized_data['title']} (与ID: {duplicate_post.id} 相似)")
+                    duplicate_count += 1
+                    continue
+                
+                # 创建新帖子
+                new_post = Post(**normalized_data)
+                self.db.add(new_post)
+                saved_count += 1
             
             # 提交所有更改
             if saved_count > 0:
                 self.db.commit()
-                logger.info(f"已保存 {saved_count} 条新HackerNews帖子")
+                logger.info(f"已保存 {saved_count} 条新HackerNews帖子，跳过 {duplicate_count} 条重复帖子")
             else:
-                logger.info("没有新的HackerNews帖子需要保存")
+                logger.info(f"没有新的HackerNews帖子需要保存，跳过 {duplicate_count} 条重复帖子")
             
             return saved_count
         
