@@ -9,6 +9,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.executors.pool import ThreadPoolExecutor
 
 from app.core.config import settings
@@ -62,7 +63,9 @@ class TaskScheduler:
     def add_job(self, 
                 func: Callable, 
                 job_id: str, 
-                interval_seconds: int, 
+                interval_seconds: Optional[int] = None,
+                cron_expression: Optional[str] = None,
+                job_name: Optional[str] = None, 
                 replace_existing: bool = True,
                 **kwargs) -> str:
         """
@@ -72,23 +75,37 @@ class TaskScheduler:
             func: 要执行的函数
             job_id: 任务ID
             interval_seconds: 任务执行间隔（秒）
+            cron_expression: Cron表达式 (例如 "0 10 * * *" 表示每天上午10点)
+            job_name: 任务名称
             replace_existing: 是否替换同ID的现有任务
             **kwargs: 传递给任务函数的参数
             
         Returns:
             任务ID
         """
-        trigger = IntervalTrigger(seconds=interval_seconds)
+        if cron_expression:
+            # 使用Cron触发器
+            trigger = CronTrigger.from_crontab(cron_expression)
+            schedule_desc = f"cron表达式: {cron_expression}"
+        elif interval_seconds:
+            # 使用间隔触发器
+            trigger = IntervalTrigger(seconds=interval_seconds)
+            schedule_desc = f"执行间隔: {interval_seconds}秒"
+        else:
+            # 默认使用间隔触发器，每小时执行一次
+            trigger = IntervalTrigger(seconds=3600)
+            schedule_desc = "执行间隔: 3600秒（默认）"
         
         job = self.scheduler.add_job(
             func=func,
             trigger=trigger,
             id=job_id,
+            name=job_name or job_id,
             replace_existing=replace_existing,
             kwargs=kwargs
         )
         
-        logger.info(f"已添加定时任务: {job_id}, 执行间隔: {interval_seconds}秒")
+        logger.info(f"已添加定时任务: {job_id}, {schedule_desc}")
         return job.id
     
     def remove_job(self, job_id: str) -> bool:

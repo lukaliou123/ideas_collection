@@ -35,13 +35,15 @@ class TaskService:
     @staticmethod
     def register_hackernews_task():
         """注册HackerNews数据收集任务"""
-        interval = settings.SCRAPER_INTERVAL  # 默认每小时执行一次
-        
+        # 使用cron触发器，设置为每天早上10点执行
         scheduler.add_job(
             func=TaskService.run_hackernews_collection,
             job_id="collect_hackernews",
-            interval_seconds=interval
+            cron_expression="0 10 * * *", 
+            job_name="HackerNews每日收集"
         )
+        
+        logger.info("已注册HackerNews数据收集任务，将在每天上午10:00执行")
     
     @staticmethod
     def register_product_processing_task():
