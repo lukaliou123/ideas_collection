@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}数据源 - 创业产品信息收集系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-4">
+        <h1>数据源</h1>
+        <p class="text-muted">系统用于收集创业产品信息的数据源列表</p>
+    </div>
+</div>
+
+<div class="row">
+    {% if sources_data %}
+        {% for source_data in sources_data %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card source-card">
+                <div class="card-header source-header source-{{ source_data.source.name|lower }}">
+                    <h3 class="source-title">{{ source_data.source.name }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="source-info">
+                        <p><strong>网址:</strong> <a href="{{ source_data.source.url }}" target="_blank">{{ source_data.source.url }}</a></p>
+                        <p><strong>状态:</strong> {% if source_data.source.active %}<span class="badge bg-success">活跃</span>{% else %}<span class="badge bg-secondary">非活跃</span>{% endif %}</p>
+                    </div>
+                    <div class="source-stats">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="stat-box">
+                                    <h4>{{ source_data.post_count }}</h4>
+                                    <span>帖子数量</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-box">
+                                    <h4>{{ source_data.product_count }}</h4>
+                                    <span>产品数量</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#sourceDesc{{ source_data.source.id }}">
+                        查看详情
+                    </button>
+                    <div class="collapse mt-2" id="sourceDesc{{ source_data.source.id }}">
+                        <div class="source-description">
+                            {% if source_data.source.name == 'HackerNews' %}
+                            <p>HackerNews 是一个社交新闻网站，专注于计算机科学和创业。它是 Y Combinator 旗下的网站，内容由用户提交并且可以被投票和评论。</p>
+                            {% elif source_data.source.name == 'IndieHackers' %}
+                            <p>Indie Hackers 是一个创业者社区，专注于分享和讨论独立创业者如何建立赚钱的在线业务。</p>
+                            {% else %}
+                            <p>该数据源用于收集创业相关的产品和讨论信息。</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                暂无数据源信息
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .source-card {
+        height: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .source-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .source-header {
+        color: white;
+        text-align: center;
+        padding: 15px;
+    }
+    
+    .source-hackernews {
+        background-color: #ff6600;
+    }
+    
+    .source-indiehackers {
+        background-color: #0e2439;
+    }
+    
+    .source-title {
+        margin: 0;
+        font-size: 1.5rem;
+    }
+    
+    .source-info {
+        margin-bottom: 15px;
+    }
+    
+    .source-stats {
+        margin: 15px 0;
+    }
+    
+    .stat-box {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    
+    .stat-box h4 {
+        font-size: 1.5rem;
+        margin: 0;
+        color: #0d6efd;
+    }
+    
+    .stat-box span {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .source-description {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %} 

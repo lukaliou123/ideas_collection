@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - 创业产品信息收集系统{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">首页</a></li>
+                <li class="breadcrumb-item"><a href="/products">产品列表</a></li>
+                <li class="breadcrumb-item active">{{ product.name }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-8">
+        <div class="product-header mb-4">
+            <h1 class="mb-2">{{ product.name }}</h1>
+            
+            <div class="d-flex flex-wrap align-items-center mb-3">
+                {% for tag in product.tags %}
+                <a href="/products?tag={{ tag.name }}" class="tag me-2">{{ tag.name }}</a>
+                {% endfor %}
+                
+                {% if product.post and product.post.source %}
+                <span class="source-badge source-{{ product.post.source.name|lower }} me-2">{{ product.post.source.name }}</span>
+                {% endif %}
+                
+                <span class="text-muted small">添加于 {{ product.created_at.strftime('%Y-%m-%d') }}</span>
+            </div>
+            
+            {% if product.post and product.post.url %}
+            <a href="{{ product.post.url }}" class="btn btn-primary btn-sm" target="_blank">
+                访问产品网站 <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        
+        <div class="product-description mb-4">
+            <h3>产品描述</h3>
+            <p>{{ product.description or '暂无描述' }}</p>
+        </div>
+        
+        <div class="product-details">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title h5 mb-0">产品详情</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <h5>解决的问题</h5>
+                            <p>{{ product.problem_solved or '未提及' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>目标受众</h5>
+                            <p>{{ product.target_audience or '未提及' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>竞争优势</h5>
+                            <p>{{ product.competitive_advantage or '未提及' }}</p>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <h5>潜在竞争对手</h5>
+                            <p>{{ product.potential_competitors or '未提及' }}</p>
+                        </div>
+                        <div class="col-12">
+                            <h5>商业模式</h5>
+                            <p>{{ product.business_model or '未提及' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- 原始帖子信息 -->
+        {% if product.post %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title h5 mb-0">原始帖子</h3>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ product.post.title }}</h5>
+                <p class="card-text text-muted">
+                    由 {{ product.post.author }} 发布于 
+                    {% if product.post.published_at %}
+                    {{ product.post.published_at.strftime('%Y-%m-%d') }}
+                    {% else %}
+                    未知日期
+                    {% endif %}
+                </p>
+                
+                <div class="d-flex mb-3">
+                    <div class="me-4">
+                        <i class="bi bi-hand-thumbs-up"></i> {{ product.post.points or 0 }} 点赞
+                    </div>
+                    <div>
+                        <i class="bi bi-chat"></i> {{ product.post.comments_count or 0 }} 评论
+                    </div>
+                </div>
+                
+                {% if product.post.url %}
+                <a href="{{ product.post.url }}" class="btn btn-outline-primary btn-sm w-100" target="_blank">
+                    访问原始帖子 <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- 相关标签 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title h5 mb-0">相关标签</h3>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap">
+                    {% for tag in product.tags %}
+                    <a href="/products?tag={{ tag.name }}" class="tag mb-2 me-2">{{ tag.name }}</a>
+                    {% else %}
+                    <p class="text-muted">没有相关标签</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- API链接 -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title h5 mb-0">API</h3>
+            </div>
+            <div class="card-body">
+                <p class="small">通过API访问此产品的数据：</p>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm" value="/api/products/{{ product.id }}" readonly>
+                    <button class="btn btn-outline-secondary btn-sm copy-btn" type="button" data-clipboard-text="/api/products/{{ product.id }}">复制</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+    }
+    
+    .product-description p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+    
+    .tag {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #495057;
+        text-decoration: none;
+    }
+    
+    .tag:hover {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .source-badge {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: white;
+    }
+    
+    .source-hackernews {
+        background-color: #ff6600;
+    }
+    
+    .source-indiehackers {
+        background-color: #0e2439;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 允许点击复制API URL
+    document.addEventListener('DOMContentLoaded', function() {
+        const copyBtn = document.querySelector('.copy-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function() {
+                const text = this.getAttribute('data-clipboard-text');
+                navigator.clipboard.writeText(text).then(function() {
+                    copyBtn.textContent = '已复制';
+                    setTimeout(function() {
+                        copyBtn.textContent = '复制';
+                    }, 2000);
+                });
+            });
+        }
+    });
+</script>
+{% endblock %} 
