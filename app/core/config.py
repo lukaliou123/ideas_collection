@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     REQUEST_TIMEOUT: int = 30  # 请求超时时间（秒）
     USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     
+    # 调度器配置
+    ENABLE_SCHEDULER: bool = True  # 是否启用定时任务调度器
+    
     # 应用设置
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
