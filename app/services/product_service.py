@@ -153,28 +153,38 @@ class ProductService:
         # 保存更改
         self.db.commit()
     
-    async def process_unprocessed_posts(self, min_points: int = 5) -> int:
+    async def process_unprocessed_posts(self, min_points: int = 5, limit: Optional[int] = None) -> int:
         """
         处理所有未处理且符合条件的帖子
         
         Args:
             min_points: 最低点赞数要求
+            limit: 最大处理数量，None表示处理所有符合条件的帖子
             
         Returns:
             成功处理的帖子数量
         """
         # 获取未处理且符合点赞数要求的帖子
-        posts = self.db.query(Post).filter(
+        query = self.db.query(Post).filter(
             Post.processed == False,
             Post.points >= min_points
-        ).all()
+        )
         
+        # 如果设置了limit，则限制数量
+        if limit:
+            posts = query.limit(limit).all()
+        else:
+            posts = query.all()
+        
+        logger.info(f"找到 {len(posts)} 条符合条件的未处理帖子")
         processed_count = 0
         
         # 处理每个帖子
         for post in posts:
+            logger.info(f"正在处理帖子 {post.id}: {post.title}")
             product = await self.process_post(post.id)
             if product:
                 processed_count += 1
+                logger.info(f"成功处理帖子 {post.id}，当前进度: {processed_count}/{len(posts)}")
         
         return processed_count 

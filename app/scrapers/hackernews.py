@@ -50,15 +50,15 @@ class HackerNewsClient:
         """关闭HTTP客户端"""
         await self.client.aclose()
     
-    async def get_newest_stories(self) -> List[int]:
-        """获取最新帖子ID列表"""
+    async def get_show_stories(self) -> List[int]:
+        """获取Show HN类型帖子的ID列表"""
         try:
-            response = await self.client.get(f"{self.BASE_URL}/newstories.json")
+            response = await self.client.get(f"{self.BASE_URL}/showstories.json")
             response.raise_for_status()
             story_ids = response.json()
             return story_ids[:self.MAX_POSTS]  # 只获取最新的N个帖子
         except Exception as e:
-            logger.error(f"获取最新帖子列表失败: {e}")
+            logger.error(f"获取Show HN帖子列表失败: {e}")
             return []
     
     async def get_story_details(self, story_id: int) -> Optional[Dict[str, Any]]:
@@ -71,13 +71,9 @@ class HackerNewsClient:
             logger.error(f"获取帖子 {story_id} 详情失败: {e}")
             return None
     
-    def is_show_hn(self, title: str) -> bool:
-        """判断是否为'Show HN'类型的帖子"""
-        return title.lower().startswith("show hn:")
-    
     async def get_show_hn_posts(self) -> List[Dict[str, Any]]:
         """获取'Show HN'类型的帖子"""
-        story_ids = await self.get_newest_stories()
+        story_ids = await self.get_show_stories()
         show_hn_posts = []
         
         # 同时获取多个帖子详情
@@ -88,9 +84,8 @@ class HackerNewsClient:
             if not story or not isinstance(story, dict):
                 continue
                 
-            # 检查是否为Show HN帖子且符合最低点赞数要求
-            if (('title' in story and self.is_show_hn(story['title'])) and 
-                ('score' in story and story['score'] >= self.MIN_POINTS)):
+            # 只检查是否符合最低点赞数要求
+            if 'score' in story and story['score'] >= self.MIN_POINTS:
                 show_hn_posts.append(story)
         
         logger.info(f"获取到 {len(show_hn_posts)} 个符合条件的'Show HN'帖子")
