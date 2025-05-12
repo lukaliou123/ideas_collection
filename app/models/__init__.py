@@ -6,6 +6,7 @@ from app.models.sources import Source
 from app.models.posts import Post
 from app.models.products import Product
 from app.models.tags import Tag, product_tags
+from app.models.tag_category import TagCategory
 
 # 在添加其他模型后从这里导入
 # from app.models.products import Product, Tag, ProductTag

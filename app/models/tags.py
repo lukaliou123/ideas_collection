@@ -21,9 +21,13 @@ class Tag(Base, BaseModel):
     __tablename__ = "tags"
     
     name = Column(String(100), nullable=False, unique=True, index=True)
+    normalized_name = Column(String, unique=True, nullable=False, index=True)
+    category_id = Column(Integer, ForeignKey("tag_categories.id"), nullable=True)
+    aliases = Column(String, nullable=True)  # 兼容sqlite，JSON可用Text或String
     
     # 关联关系
     products = relationship("Product", secondary=product_tags, back_populates="tags")
+    category = relationship("app.models.tag_category.TagCategory", backref="tags")
     
     def __repr__(self):
         return f"<Tag {self.name}>" 
