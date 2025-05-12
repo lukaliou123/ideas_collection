@@ -58,12 +58,17 @@
             <p>共找到 <strong>{{ total_products }}</strong> 个产品</p>
             <div class="dropdown">
                 <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="sortDropdown" data-bs-toggle="dropdown">
-                    排序方式: 最新添加
+                    排序方式: 
+                    {% if current_sort == "latest" %}最新添加
+                    {% elif current_sort == "popular" %}热门程度
+                    {% elif current_sort == "name" %}名称
+                    {% else %}最新添加
+                    {% endif %}
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="sortDropdown">
-                    <li><a class="dropdown-item active" href="#">最新添加</a></li>
-                    <li><a class="dropdown-item" href="#">热门程度</a></li>
-                    <li><a class="dropdown-item" href="#">名称</a></li>
+                    <li><a class="dropdown-item {% if current_sort == 'latest' %}active{% endif %}" href="?sort_by=latest{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}">最新添加</a></li>
+                    <li><a class="dropdown-item {% if current_sort == 'popular' %}active{% endif %}" href="?sort_by=popular{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}">热门程度</a></li>
+                    <li><a class="dropdown-item {% if current_sort == 'name' %}active{% endif %}" href="?sort_by=name{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}">名称</a></li>
                 </ul>
             </div>
         </div>
@@ -106,7 +111,7 @@
         <nav aria-label="产品列表分页" class="mt-4">
             <ul class="pagination justify-content-center">
                 <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                    <a class="page-link" href="/products?page={{ current_page - 1 }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}" aria-label="上一页">
+                    <a class="page-link" href="/products?page={{ current_page - 1 }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}{% if current_sort %}&sort_by={{ current_sort }}{% endif %}" aria-label="上一页">
                         <span aria-hidden="true">&laquo;</span>
                     </a>
                 </li>
@@ -116,7 +121,7 @@
                     <li class="page-item active"><span class="page-link">{{ p }}</span></li>
                     {% elif p <= 3 or p >= total_pages - 2 or (p >= current_page - 1 and p <= current_page + 1) %}
                     <li class="page-item">
-                        <a class="page-link" href="/products?page={{ p }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}">{{ p }}</a>
+                        <a class="page-link" href="/products?page={{ p }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}{% if current_sort %}&sort_by={{ current_sort }}{% endif %}">{{ p }}</a>
                     </li>
                     {% elif p == 4 and current_page > 4 or p == total_pages - 3 and current_page < total_pages - 3 %}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -124,7 +129,7 @@
                 {% endfor %}
                 
                 <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                    <a class="page-link" href="/products?page={{ current_page + 1 }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}" aria-label="下一页">
+                    <a class="page-link" href="/products?page={{ current_page + 1 }}{% if filter_tag %}&tag={{ filter_tag }}{% endif %}{% if filter_source %}&source={{ filter_source }}{% endif %}{% if current_sort %}&sort_by={{ current_sort }}{% endif %}" aria-label="下一页">
                         <span aria-hidden="true">&raquo;</span>
                     </a>
                 </li>

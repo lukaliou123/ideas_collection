@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import List, Optional
 import math
+from enum import Enum
 
 from app.core.database import get_db
 from app.models.sources import Source
@@ -15,6 +16,12 @@ from app.models.posts import Post
 from app.models.products import Product
 from app.models.tags import Tag
 from app.services.product_service import ProductService
+
+# 定义排序方式的枚举类
+class ProductSortBy(str, Enum):
+    latest = "latest"  # 最新添加
+    popular = "popular" # 热门程度
+    name = "name"     # 名称
 
 router = APIRouter()
 
@@ -41,25 +48,20 @@ async def products_page(
     page: int = Query(1, ge=1),
     tag: Optional[str] = None,
     source: Optional[str] = None,
+    sort_by: Optional[ProductSortBy] = Query(ProductSortBy.latest, description="排序方式"),
     db: Session = Depends(get_db)
 ):
     """产品列表页"""
     per_page = 12
-    query = db.query(Product)
+    product_service = ProductService(db)
     
-    # 应用过滤条件
-    if tag:
-        query = query.join(Product.tags).filter(Tag.name == tag)
-    
-    if source:
-        query = query.join(Product.post).join(Post.source).filter(Source.name == source)
-    
-    # 计算总数和页数
-    total = query.count()
-    pages = math.ceil(total / per_page)
-    
-    # 获取当前页的产品
-    products = query.order_by(desc(Product.created_at)).offset((page - 1) * per_page).limit(per_page).all()
+    products_data = await product_service.get_products_with_pagination(
+        page=page,
+        per_page=per_page,
+        tag_name=tag,
+        source_name=source,
+        sort_by_value=sort_by.value if sort_by else ProductSortBy.latest.value
+    )
     
     # 获取所有标签供过滤使用
     tags = db.query(Tag).all()
@@ -71,14 +73,15 @@ async def products_page(
         "products.html",
         {
             "request": request, 
-            "products": products,
+            "products": products_data["products"],
             "tags": tags,
             "sources": sources,
             "current_page": page,
-            "total_pages": pages,
-            "total_products": total,
+            "total_pages": products_data["pages"],
+            "total_products": products_data["total"],
             "filter_tag": tag,
-            "filter_source": source
+            "filter_source": source,
+            "current_sort": products_data["sort_by"]
         }
     )
 
@@ -123,47 +126,27 @@ async def api_products(
     per_page: int = Query(10, ge=1, le=100),
     tag: Optional[str] = None,
     source: Optional[str] = None,
+    sort_by: Optional[ProductSortBy] = Query(ProductSortBy.latest, description="排序方式"),
     db: Session = Depends(get_db)
 ):
     """获取产品列表API"""
-    query = db.query(Product)
+    product_service = ProductService(db)
+    products_data = await product_service.get_products_with_pagination(
+        page=page,
+        per_page=per_page,
+        tag_name=tag,
+        source_name=source,
+        sort_by_value=sort_by.value if sort_by else ProductSortBy.latest.value
+    )
     
-    # 应用过滤条件
-    if tag:
-        query = query.join(Product.tags).filter(Tag.name == tag)
-    
-    if source:
-        query = query.join(Product.post).join(Post.source).filter(Source.name == source)
-    
-    # 计算总数和页数
-    total = query.count()
-    pages = math.ceil(total / per_page)
-    
-    # 获取当前页的产品
-    products = query.order_by(desc(Product.created_at)).offset((page - 1) * per_page).limit(per_page).all()
-    
-    # 格式化结果
-    result = {
-        "total": total,
-        "pages": pages,
-        "page": page,
+    return {
+        "total": products_data["total"],
+        "pages": products_data["pages"],
+        "page": products_data["page"],
         "per_page": per_page,
-        "products": [
-            {
-                "id": p.id,
-                "name": p.name,
-                "description": p.description,
-                "problem_solved": p.problem_solved,
-                "target_audience": p.target_audience,
-                "tags": [tag.name for tag in p.tags],
-                "source": p.post.source.name if p.post and p.post.source else None,
-                "created_at": p.created_at.isoformat() if p.created_at else None
-            }
-            for p in products
-        ]
+        "sort_by": products_data["sort_by"],
+        "products": products_data["products_api_format"]
     }
-    
-    return result
 
 @router.get("/api/products/{product_id}")
 async def api_product_detail(product_id: int, db: Session = Depends(get_db)):

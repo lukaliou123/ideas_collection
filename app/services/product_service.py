@@ -4,6 +4,8 @@
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
+from sqlalchemy import desc, asc
+import math
 
 from app.models.posts import Post
 from app.models.products import Product
@@ -18,6 +20,75 @@ class ProductService:
         """初始化服务"""
         self.db = db
         self.ai_service = AIService()
+    
+    async def get_products_with_pagination(
+        self,
+        page: int = 1,
+        per_page: int = 12,
+        tag_name: Optional[str] = None,
+        source_name: Optional[str] = None,
+        sort_by_value: str = "latest"
+    ) -> Dict[str, Any]:
+        """
+        获取产品列表并应用分页、过滤和排序
+        
+        Args:
+            page: 页码
+            per_page: 每页数量
+            tag_name: 按标签名称过滤
+            source_name: 按来源名称过滤
+            sort_by_value: 排序方式
+            
+        Returns:
+            包含产品列表和分页信息的字典
+        """
+        query = self.db.query(Product)
+
+        # 应用过滤条件
+        if tag_name:
+            query = query.join(Product.tags).filter(Tag.name == tag_name)
+        
+        if source_name:
+            query = query.join(Product.post).join(Post.source).filter(Source.name == source_name)
+
+        # 应用排序
+        if sort_by_value == "popular":
+            query = query.join(Product.post).order_by(desc(Post.points + Post.comments_count))
+        elif sort_by_value == "name":
+            query = query.order_by(asc(Product.name))
+        else:  # "latest" 或默认
+            query = query.order_by(desc(Product.created_at))
+
+        # 计算总数和页数
+        total = query.count()
+        pages = math.ceil(total / per_page)
+        offset = (page - 1) * per_page
+        products_result = query.offset(offset).limit(per_page).all()
+        
+        # 为API准备格式化的数据
+        products_api_format = [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "problem_solved": p.problem_solved,
+                "target_audience": p.target_audience,
+                "tags": [t.name for t in p.tags],
+                "source": p.post.source.name if p.post and p.post.source else None,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+                "points": p.post.points if p.post else 0
+            }
+            for p in products_result
+        ]
+
+        return {
+            "products": products_result,  # 用于模板渲染
+            "products_api_format": products_api_format,  # 用于API响应
+            "total": total,
+            "pages": pages,
+            "page": page,
+            "sort_by": sort_by_value
+        }
     
     async def process_post(self, post_id: int) -> Optional[Product]:
         """
