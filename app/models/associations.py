@@ -4,7 +4,7 @@
 """
 from sqlalchemy import Column, Integer, ForeignKey, Table
 
-from ..db.base_class import Base
+from ..core.database import Base
 
 # 产品-标签的多对多关系表
 product_tag_association = Table(

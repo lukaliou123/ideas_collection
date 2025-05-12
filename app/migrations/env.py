@@ -17,7 +17,17 @@ fileConfig(config.config_file_name)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from backend.app.db.base_class import Base
+
+# Import Base from the correct location
+from app.core.database import Base 
+
+# Import all models that define tables
+from app.models.sources import Source
+from app.models.posts import Post
+from app.models.products import Product
+from app.models.tag import Tag, TagCategory
+# Add other models here if they exist and define tables
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

@@ -59,6 +59,7 @@ Posts
 - points: Integer
 - comments_count: Integer
 - collected_at: DateTime
+- processed: Integer (0:未处理, 1:已处理, 2:处理失败)
 
 Products
 - id: Integer (PK)
@@ -75,7 +76,7 @@ Tags
 - id: Integer (PK)
 - name: String
 
-ProductTags
+product_tags
 - product_id: Integer (FK -> Products)
 - tag_id: Integer (FK -> Tags)
 ```

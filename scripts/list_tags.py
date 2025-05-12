@@ -6,9 +6,10 @@ import os
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+print(f"Added {os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))} to sys.path")
 
 from app.core.database import SessionLocal
-from app.models.tags import Tag
+from app.models.tag import Tag
 
 def list_tags():
     """列出所有标签"""

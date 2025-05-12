@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 from app.models.base import BaseModel
-from app.models.tags import product_tags
+from app.models.associations import product_tag_association
 
 class Product(Base, BaseModel):
     """产品模型，存储从帖子中提取的结构化产品信息"""
@@ -25,7 +25,7 @@ class Product(Base, BaseModel):
     
     # 关联关系
     post = relationship("Post", back_populates="product")
-    tags = relationship("Tag", secondary=product_tags, back_populates="products")
+    tags = relationship("Tag", secondary=product_tag_association, back_populates="products")
     
     def __repr__(self):
         return f"<Product {self.name}>" 

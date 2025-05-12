@@ -9,11 +9,13 @@ import math
 
 from app.models.posts import Post
 from app.models.products import Product
-from app.models.tags import Tag
+from app.models.tag import Tag
 from app.models.sources import Source
 from app.services.ai_service import AIService, AIAnalysisResult
 from app.services.ai_service_langchain import LangChainAIService
 from app.utils.logger import logger
+from app.core.database import SessionLocal, get_db
+from app.core.config import settings
 
 class ProductService:
     """产品服务类，负责处理产品信息和标签"""
@@ -203,30 +205,51 @@ class ProductService:
             product: 产品对象
             tag_names: 标签名称列表
         """
+        logger.info(f"Processing tags for product {product.id}. Received tags from AI: {tag_names}")
+        
         # 清除现有标签关联
         product.tags = []
         
+        new_tags_added_to_session = False
+
         # 处理每个标签
         for tag_name in tag_names:
             if not tag_name or len(tag_name.strip()) == 0:
+                logger.debug(f"Skipping empty or whitespace tag: '{tag_name}'")
                 continue
                 
             # 规范化标签名称
             normalized_name = tag_name.strip().lower()
+            logger.debug(f"Normalized tag name: '{normalized_name}'")
             
             # 查找或创建标签
             tag = self.db.query(Tag).filter(Tag.name == normalized_name).first()
             if not tag:
-                tag = Tag(name=normalized_name)
+                logger.info(f"Tag '{normalized_name}' not found, creating new tag.")
+                tag = Tag(name=tag_name.strip(), normalized_name=normalized_name)
                 self.db.add(tag)
-                self.db.commit()
-                self.db.refresh(tag)
-            
-            # 添加标签关联
-            product.tags.append(tag)
-        
-        # 保存更改
+                new_tags_added_to_session = True
+            else:
+                logger.debug(f"Found existing tag: '{normalized_name}' (ID: {tag.id})")
+
+            # 添加标签关联 (Ensure tag is in the session if it was just created)
+            if tag not in product.tags:
+                if tag not in self.db.object_session(product):
+                    self.db.add(tag)
+                product.tags.append(tag)
+            else:
+                logger.debug(f"Tag '{normalized_name}' already associated with product {product.id}, skipping duplicate append.")
+
+        logger.info(f"Final tag list for product {product.id} before commit: {[t.name for t in product.tags]}")
+        # 保存更改 (Commit includes new tags and associations)
         self.db.commit()
+
+        # Refresh the product to load the tags correctly after commit
+        try:
+            self.db.refresh(product)
+            logger.info(f"Product {product.id} tags refreshed after commit.")
+        except Exception as e:
+            logger.error(f"Failed to refresh product {product.id} after tag processing: {e}")
     
     async def process_unprocessed_posts(self, min_points: int = 5, limit: Optional[int] = None) -> int:
         """

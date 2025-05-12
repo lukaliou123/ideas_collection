@@ -1,15 +1,15 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, JSON
 from sqlalchemy.orm import relationship, declared_attr
 
-from ..db.base_class import Base
+from ..core.database import Base
 from .associations import product_tag_association
+from .base import BaseModel
 
 
-class TagCategory(Base):
+class TagCategory(Base, BaseModel):
     """标签分类模型"""
     __tablename__ = "tag_categories"
     
-    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)
     
@@ -20,11 +20,10 @@ class TagCategory(Base):
         return f"<TagCategory {self.name}>"
 
 
-class Tag(Base):
+class Tag(Base, BaseModel):
     """标签模型"""
     __tablename__ = "tags"
     
-    id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, nullable=False)
     normalized_name = Column(String, unique=True, index=True, nullable=False)
     description = Column(String, nullable=True)

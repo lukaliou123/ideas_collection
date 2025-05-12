@@ -14,8 +14,9 @@ from app.core.database import get_db
 from app.models.sources import Source
 from app.models.posts import Post
 from app.models.products import Product
-from app.models.tags import Tag
+from app.models.tag import Tag
 from app.services.product_service import ProductService
+from app.services.content_service import ContentService
 
 # 定义排序方式的枚举类
 class ProductSortBy(str, Enum):

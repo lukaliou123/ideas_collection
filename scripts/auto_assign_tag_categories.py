@@ -8,8 +8,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.core.database import SessionLocal
-from app.models.tags import Tag
-from app.models.tag_category import TagCategory
+from app.models.tag import Tag, TagCategory
 
 # 分类映射（可根据实际需求补充/调整）
 CATEGORY_MAP = {
