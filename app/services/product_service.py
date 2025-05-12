@@ -12,6 +12,7 @@ from app.models.products import Product
 from app.models.tags import Tag
 from app.models.sources import Source
 from app.services.ai_service import AIService, AIAnalysisResult
+from app.services.ai_service_langchain import LangChainAIService
 from app.utils.logger import logger
 
 class ProductService:
@@ -21,6 +22,8 @@ class ProductService:
         """初始化服务"""
         self.db = db
         self.ai_service = AIService()
+        # 初始化 LangChain AI服务
+        self.langchain_ai_service = LangChainAIService(db)
     
     async def get_products_with_pagination(
         self,
@@ -315,17 +318,34 @@ class ProductService:
             if product.concept_image_url and not product.concept_image_url.endswith('default.png'):
                 continue
                 
-            # 使用AI服务生成图片
-            image_url = await self.ai_service.generate_product_image(
-                product_name=product.name,
-                product_description=product.description or ""
-            )
-            
-            if image_url:
-                # 更新产品信息
-                product.concept_image_url = image_url
-                self.db.commit()
-                success_count += 1
-                logger.info(f"为产品 '{product.name}' (ID:{product.id}) 生成了概念图")
+            # 使用LangChain AI服务生成图片
+            try:
+                image_url = await self.langchain_ai_service.generate_product_image(
+                    product_name=product.name,
+                    product_description=product.description or ""
+                )
+                
+                if image_url:
+                    # 更新产品信息
+                    product.concept_image_url = image_url
+                    self.db.commit()
+                    success_count += 1
+                    logger.info(f"为产品 '{product.name}' (ID:{product.id}) 生成了概念图")
+            except Exception as e:
+                logger.error(f"为产品 '{product.name}' (ID:{product.id}) 生成概念图时出错: {e}")
+                # 如果LangChain服务失败，尝试使用原始服务作为后备
+                try:
+                    image_url = await self.ai_service.generate_product_image(
+                        product_name=product.name,
+                        product_description=product.description or ""
+                    )
+                    
+                    if image_url:
+                        product.concept_image_url = image_url
+                        self.db.commit()
+                        success_count += 1
+                        logger.info(f"使用备用方法为产品 '{product.name}' (ID:{product.id}) 生成了概念图")
+                except Exception as inner_e:
+                    logger.error(f"备用方法也无法为产品 '{product.name}' 生成图片: {inner_e}")
         
         return success_count 

@@ -380,4 +380,81 @@ class LangChainAIService:
             
         except Exception as e:
             logger.error(f"分析精选产品过程中出错: {e}")
-            return [] 
+            return []
+
+    @backoff.on_exception(
+        backoff.expo,
+        (httpx.HTTPError, httpx.TimeoutException),
+        max_tries=3
+    )
+    async def generate_product_image(self, product_name: str, product_description: str) -> Optional[str]:
+        """
+        为产品生成概念图
+        
+        Args:
+            product_name: 产品名称
+            product_description: 产品描述
+            
+        Returns:
+            生成的图片URL或None（如果生成失败）
+        """
+        if not self.is_available:
+            logger.warning("LangChain AI服务不可用，无法生成图像")
+            return None
+        
+        # 检查日限制
+        if not await self.can_generate_image():
+            logger.warning("已达到每日图像生成限制")
+            return None
+        
+        try:
+            # 生成图像提示词
+            prompt_result = await self.image_prompt_chain.ainvoke({
+                "product_name": product_name,
+                "product_description": product_description[:200] if product_description else "创新产品",
+                "problem_solved": "提升用户体验的问题"
+            })
+            
+            # 清理提示词
+            prompt = prompt_result.strip().replace("\n", " ")
+            logger.info(f"为产品 {product_name} 生成的图像提示词: {prompt}")
+            
+            # 调用DALL-E API生成图像
+            client = httpx.AsyncClient(timeout=60.0)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.OPENAI_API_KEY}"
+            }
+            
+            payload = {
+                "model": "dall-e-2",  # 使用DALL-E 2模型
+                "prompt": prompt,
+                "n": 1,
+                "size": "512x512",  # 使用512x512尺寸
+                "response_format": "url"
+            }
+            
+            response = await client.post(
+                "https://api.openai.com/v1/images/generations",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # 提取图像URL
+            if result and "data" in result and len(result["data"]) > 0:
+                image_url = result["data"][0]["url"]
+                
+                # 递增计数
+                self._increment_image_generation_count()
+                
+                logger.info(f"成功为产品 '{product_name}' 生成概念图")
+                return image_url
+            else:
+                logger.warning("图像生成API返回了无效的响应格式")
+                return None
+                
+        except Exception as e:
+            logger.error(f"生成产品概念图失败: {e}")
+            return None 

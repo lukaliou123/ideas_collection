@@ -327,19 +327,37 @@ class AIService:
             # 创建提示词
             prompt = f"A clean, modern product concept image for '{product_name}': {product_description[:200]}. Minimal, professional design."
             
-            # 调用DALL-E API
-            response = await openai.images.generate(
-                model="dall-e-2",
-                prompt=prompt,
-                size="512x512",
-                quality="standard",
-                n=1
-            )
+            # 调用DALL-E API（直接使用httpx而不是openai库）
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            payload = {
+                "model": "dall-e-2",
+                "prompt": prompt,
+                "n": 1,
+                "size": "512x512",
+                "response_format": "url"
+            }
+            
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/images/generations",
+                    headers=headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                result = response.json()
             
             # 提取图片URL
-            image_url = response.data[0].url
-            logger.info(f"成功为产品 '{product_name}' 生成概念图")
-            return image_url
+            if result and "data" in result and len(result["data"]) > 0:
+                image_url = result["data"][0]["url"]
+                logger.info(f"成功为产品 '{product_name}' 生成概念图")
+                return image_url
+            else:
+                logger.warning("图像生成API返回了无效的响应格式")
+                return None
         except Exception as e:
             logger.error(f"生成产品概念图失败: {e}")
             return None 
