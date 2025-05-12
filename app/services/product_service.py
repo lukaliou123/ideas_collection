@@ -10,6 +10,7 @@ import math
 from app.models.posts import Post
 from app.models.products import Product
 from app.models.tags import Tag
+from app.models.sources import Source
 from app.services.ai_service import AIService, AIAnalysisResult
 from app.utils.logger import logger
 
@@ -258,4 +259,73 @@ class ProductService:
                 processed_count += 1
                 logger.info(f"成功处理帖子 {post.id}，当前进度: {processed_count}/{len(posts)}")
         
-        return processed_count 
+        return processed_count
+    
+    async def get_featured_products(self, limit: int = 3) -> List[Product]:
+        """
+        获取精选产品（当日更新中点赞数最高的产品）
+        
+        Args:
+            limit: 要获取的产品数量
+            
+        Returns:
+            精选产品列表
+        """
+        # 获取今天的日期（0点0分0秒）
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # 查询今天创建或更新的产品，按点赞数排序
+        query = self.db.query(Product)\
+            .join(Product.post)\
+            .filter(Product.created_at >= today)\
+            .order_by(desc(Post.points + Post.comments_count))\
+            .limit(limit)
+        
+        featured_products = query.all()
+        
+        # 如果今天没有足够的新产品，则获取历史数据补充
+        if len(featured_products) < limit:
+            remaining = limit - len(featured_products)
+            existing_ids = [p.id for p in featured_products]
+            
+            backup_products = self.db.query(Product)\
+                .join(Product.post)\
+                .filter(Product.id.notin_(existing_ids) if existing_ids else True)\
+                .order_by(desc(Post.points + Post.comments_count))\
+                .limit(remaining)\
+                .all()
+                
+            featured_products.extend(backup_products)
+        
+        return featured_products
+    
+    async def generate_images_for_featured_products(self) -> int:
+        """
+        为精选产品生成概念图
+        
+        Returns:
+            成功生成图片的产品数量
+        """
+        # 获取精选产品
+        featured_products = await self.get_featured_products()
+        success_count = 0
+        
+        for product in featured_products:
+            # 如果已有图片且不是默认图片，则跳过
+            if product.concept_image_url and not product.concept_image_url.endswith('default.png'):
+                continue
+                
+            # 使用AI服务生成图片
+            image_url = await self.ai_service.generate_product_image(
+                product_name=product.name,
+                product_description=product.description or ""
+            )
+            
+            if image_url:
+                # 更新产品信息
+                product.concept_image_url = image_url
+                self.db.commit()
+                success_count += 1
+                logger.info(f"为产品 '{product.name}' (ID:{product.id}) 生成了概念图")
+        
+        return success_count 

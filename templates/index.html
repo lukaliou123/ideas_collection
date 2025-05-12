@@ -17,52 +17,52 @@
 
 <div class="row mt-5">
     <div class="col-12 mb-4">
-        <h2>最新收集的产品</h2>
+        <h2>{% if is_featured %}精选产品{% else %}最新收集的产品{% endif %}</h2>
     </div>
     
-    <!-- 产品列表将在实际实现中动态生成 -->
-    <div class="col-md-4">
-        <div class="product-card">
-            <h3 class="product-title">示例产品 1</h3>
-            <p class="product-description">这是一个示例产品描述，展示产品信息的布局。</p>
-            <div class="mb-2">
-                <span class="tag">SaaS</span>
-                <span class="tag">AI</span>
-            </div>
-            <div class="product-meta">
-                <span class="source-badge source-hackernews">HackerNews</span>
-                <span class="ms-2">2023-07-15</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="product-card">
-            <h3 class="product-title">示例产品 2</h3>
-            <p class="product-description">另一个示例产品，展示多个产品的布局方式。</p>
-            <div class="mb-2">
-                <span class="tag">工具</span>
-                <span class="tag">开发者</span>
-            </div>
-            <div class="product-meta">
-                <span class="source-badge source-indiehackers">IndieHackers</span>
-                <span class="ms-2">2023-07-14</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="product-card">
-            <h3 class="product-title">示例产品 3</h3>
-            <p class="product-description">第三个示例产品，用于展示界面布局。</p>
-            <div class="mb-2">
-                <span class="tag">电子商务</span>
-                <span class="tag">营销</span>
-            </div>
-            <div class="product-meta">
-                <span class="source-badge source-hackernews">HackerNews</span>
-                <span class="ms-2">2023-07-13</span>
+    {% if products %}
+        {% for product in products %}
+        <div class="col-md-4">
+            <div class="featured-product-card">
+                <div class="product-image">
+                    {% if product.concept_image_url %}
+                    <img src="{{ product.concept_image_url }}" alt="{{ product.name }}" class="img-fluid rounded">
+                    {% elif product.image_url %}
+                    <img src="{{ product.image_url }}" alt="{{ product.name }}" class="img-fluid rounded">
+                    {% else %}
+                    <div class="placeholder-image">
+                        <i class="bi bi-image"></i>
+                    </div>
+                    {% endif %}
+                </div>
+                <h3 class="product-title">
+                    <a href="/products/{{ product.id }}">{{ product.name }}</a>
+                </h3>
+                <p class="product-description">{{ product.description|truncate(120) if product.description else "暂无描述" }}</p>
+                <div class="mb-2">
+                    {% for tag in product.tags[:3] %}
+                    <a href="/products?tag={{ tag.name }}" class="tag">{{ tag.name }}</a>
+                    {% endfor %}
+                </div>
+                <div class="product-meta">
+                    {% if product.post and product.post.source %}
+                    <span class="source-badge source-{{ product.post.source.name|lower }}">{{ product.post.source.name }}</span>
+                    {% endif %}
+                    <span class="ms-2">{{ product.created_at.strftime('%Y-%m-%d') }}</span>
+                    {% if product.post %}
+                    <span class="ms-2">
+                        <i class="bi bi-hand-thumbs-up"></i> {{ product.post.points }}
+                    </span>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <p>暂无精选产品</p>
+        </div>
+    {% endif %}
     
     <div class="col-12 mt-4 text-center">
         <a href="/products" class="btn btn-outline-primary">查看更多产品</a>
@@ -92,4 +92,109 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .featured-product-card {
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        padding: 20px;
+        height: 100%;
+        transition: transform 0.3s, box-shadow 0.3s;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    
+    .featured-product-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+    }
+    
+    .product-image {
+        height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 15px;
+        overflow: hidden;
+        border-radius: 8px;
+        background-color: #f8f9fa;
+    }
+    
+    .product-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .placeholder-image {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: #dee2e6;
+    }
+    
+    .product-title {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    
+    .product-title a {
+        color: #212529;
+        text-decoration: none;
+    }
+    
+    .product-title a:hover {
+        color: #0d6efd;
+    }
+    
+    .product-description {
+        font-size: 0.9rem;
+        color: #6c757d;
+        margin-bottom: 15px;
+    }
+    
+    .product-meta {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .source-badge {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: white;
+    }
+    
+    .source-hackernews {
+        background-color: #ff6600;
+    }
+    
+    .source-indiehackers {
+        background-color: #0e2439;
+    }
+    
+    .tag {
+        display: inline-block;
+        background-color: #e9ecef;
+        padding: 3px 8px;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: #495057;
+        text-decoration: none;
+    }
+    
+    .tag:hover {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
 {% endblock %} 

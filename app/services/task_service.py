@@ -26,6 +26,7 @@ class TaskService:
         # 如果启用了AI分析，注册产品处理任务
         if settings.ENABLE_AI_ANALYSIS:
             TaskService.register_product_processing_task()
+            TaskService.register_featured_products_task()
         
         # 未来添加更多任务
         # TaskService.register_indiehackers_task()
@@ -56,6 +57,19 @@ class TaskService:
             job_id="process_products",
             interval_seconds=interval
         )
+    
+    @staticmethod
+    def register_featured_products_task():
+        """注册精选产品更新任务"""
+        # 使用cron触发器，在每天上午10:30执行（在产品处理完成后）
+        scheduler.add_job(
+            func=TaskService.run_featured_products_update,
+            job_id="update_featured_products",
+            cron_expression="30 10 * * *",
+            job_name="更新首页精选产品"
+        )
+        
+        logger.info("已注册精选产品更新任务，将在每天上午10:30执行")
     
     @staticmethod
     def run_hackernews_collection():
@@ -113,6 +127,39 @@ class TaskService:
             
         except Exception as e:
             logger.error(f"执行产品处理任务时出错: {e}")
+            # 打印完整的异常堆栈
+            import traceback
+            logger.error(traceback.format_exc())
+            return 0
+            
+        finally:
+            db.close()
+    
+    @staticmethod
+    def run_featured_products_update():
+        """执行精选产品更新任务"""
+        # 创建数据库会话
+        db = SessionLocal()
+        
+        try:
+            # 创建事件循环并执行异步任务
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # 创建产品服务
+            service = ProductService(db)
+            
+            # 运行异步任务并获取结果
+            result = loop.run_until_complete(service.generate_images_for_featured_products())
+            
+            # 关闭事件循环
+            loop.close()
+            
+            logger.info(f"精选产品更新任务执行完成，为 {result} 个产品生成了概念图")
+            return result
+            
+        except Exception as e:
+            logger.error(f"执行精选产品更新任务时出错: {e}")
             # 打印完整的异常堆栈
             import traceback
             logger.error(traceback.format_exc())

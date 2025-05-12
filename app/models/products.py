@@ -21,6 +21,7 @@ class Product(Base, BaseModel):
     competitive_advantage = Column(Text, nullable=True)
     potential_competitors = Column(Text, nullable=True)
     business_model = Column(Text, nullable=True)
+    concept_image_url = Column(String(1000), nullable=True)  # 产品概念图URL
     
     # 关联关系
     post = relationship("Post", back_populates="product")

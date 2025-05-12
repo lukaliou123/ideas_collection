@@ -8,6 +8,7 @@ import httpx
 import json
 import backoff
 from pydantic import BaseModel
+import openai
 
 from app.core.config import settings
 from app.utils.logger import logger
@@ -44,6 +45,9 @@ class AIService:
         # 验证API密钥是否已设置
         if not self.api_key or self.api_key == "your_openai_api_key_here":
             logger.warning("OpenAI API密钥未设置，AI功能将不可用")
+        
+        # 设置OpenAI API密钥
+        openai.api_key = self.api_key
     
     @backoff.on_exception(
         backoff.expo,
@@ -306,4 +310,36 @@ class AIService:
                 
         except Exception as e:
             logger.error(f"生成标签时出错: {e}")
-            return [] 
+            return []
+    
+    async def generate_product_image(self, product_name: str, product_description: str) -> Optional[str]:
+        """
+        为产品生成概念图
+        
+        Args:
+            product_name: 产品名称
+            product_description: 产品描述
+            
+        Returns:
+            生成的图片URL或None（如果生成失败）
+        """
+        try:
+            # 创建提示词
+            prompt = f"A clean, modern product concept image for '{product_name}': {product_description[:200]}. Minimal, professional design."
+            
+            # 调用DALL-E API
+            response = await openai.images.generate(
+                model="dall-e-2",
+                prompt=prompt,
+                size="512x512",
+                quality="standard",
+                n=1
+            )
+            
+            # 提取图片URL
+            image_url = response.data[0].url
+            logger.info(f"成功为产品 '{product_name}' 生成概念图")
+            return image_url
+        except Exception as e:
+            logger.error(f"生成产品概念图失败: {e}")
+            return None 

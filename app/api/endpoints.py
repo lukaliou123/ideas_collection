@@ -34,12 +34,18 @@ async def home(request: Request, db: Session = Depends(get_db)):
     # 获取数据源列表
     sources = db.query(Source).filter(Source.active == True).all()
     
-    # 获取最新的3个产品
-    latest_products = db.query(Product).order_by(desc(Product.created_at)).limit(3).all()
+    # 获取精选产品
+    product_service = ProductService(db)
+    featured_products = await product_service.get_featured_products(limit=3)
     
     return templates.TemplateResponse(
         "index.html",
-        {"request": request, "sources": sources, "products": latest_products}
+        {
+            "request": request, 
+            "sources": sources, 
+            "products": featured_products,
+            "is_featured": True
+        }
     )
 
 @router.get("/products")
