@@ -3,6 +3,16 @@
 """
 import asyncio
 import traceback
+import sys
+import os
+
+# Add project root to Python path
+# Adjust if your script structure is different
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
+
 from app.services.product_service import ProductService
 from app.core.database import SessionLocal
 from app.utils.logger import logger

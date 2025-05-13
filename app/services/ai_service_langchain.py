@@ -7,6 +7,8 @@ import asyncio
 import json
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional, Union, Tuple
+import os
+import uuid
 
 import httpx
 from sqlalchemy.orm import Session
@@ -326,16 +328,37 @@ class LangChainAIService:
             
             # 提取图像URL
             if result and "data" in result and len(result["data"]) > 0:
-                image_url = result["data"][0]["url"]
+                dalle_image_url = result["data"][0]["url"]
+                
+                # 下载图片
+                logger.info(f"Downloading image from DALL-E URL: {dalle_image_url}")
+                async with httpx.AsyncClient(timeout=60.0) as download_client:
+                    image_response = await download_client.get(dalle_image_url)
+                    image_response.raise_for_status()
+                
+                image_data = image_response.content
+                file_extension = os.path.splitext(dalle_image_url)[1].split('?')[0]
+                if not file_extension:
+                    file_extension = ".png"
+                
+                image_filename = f"{uuid.uuid4()}{file_extension}"
+                image_dir = os.path.join("static", "product_images")
+                os.makedirs(image_dir, exist_ok=True)
+                local_image_path = os.path.join(image_dir, image_filename)
+                
+                with open(local_image_path, "wb") as f:
+                    f.write(image_data)
+                
+                logger.info(f"Image saved locally to: {local_image_path}")
                 
                 # 更新产品记录
-                product.image_url = image_url
+                product.image_url = f"/static/product_images/{image_filename}"
                 self.db.commit()
                 
                 # 递增计数
                 self._increment_image_generation_count()
                 
-                return image_url
+                return product.image_url
             else:
                 logger.warning("图像生成API返回了无效的响应格式")
                 return None
@@ -444,13 +467,34 @@ class LangChainAIService:
             
             # 提取图像URL
             if result and "data" in result and len(result["data"]) > 0:
-                image_url = result["data"][0]["url"]
+                dalle_image_url = result["data"][0]["url"]
+                
+                # 下载图片
+                logger.info(f"Downloading image from DALL-E URL: {dalle_image_url}")
+                async with httpx.AsyncClient(timeout=60.0) as download_client:
+                    image_response = await download_client.get(dalle_image_url)
+                    image_response.raise_for_status()
+                
+                image_data = image_response.content
+                file_extension = os.path.splitext(dalle_image_url)[1].split('?')[0]
+                if not file_extension:
+                    file_extension = ".png"
+                
+                image_filename = f"{uuid.uuid4()}{file_extension}"
+                image_dir = os.path.join("static", "product_images")
+                os.makedirs(image_dir, exist_ok=True)
+                local_image_path = os.path.join(image_dir, image_filename)
+                
+                with open(local_image_path, "wb") as f:
+                    f.write(image_data)
+                
+                logger.info(f"Image saved locally to: {local_image_path}")
                 
                 # 递增计数
                 self._increment_image_generation_count()
                 
-                logger.info(f"成功为产品 '{product_name}' 生成概念图")
-                return image_url
+                logger.info(f"成功为产品 '{product_name}' 生成概念图并保存到本地")
+                return f"/static/product_images/{image_filename}"
             else:
                 logger.warning("图像生成API返回了无效的响应格式")
                 return None
