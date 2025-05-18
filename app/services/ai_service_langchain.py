@@ -20,6 +20,8 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
+from langfuse import Langfuse
+from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
 
 from app.core.config import settings
 from app.utils.logger import logger
@@ -59,6 +61,7 @@ class LangChainAIService:
             db: 数据库会话，用于存储分析结果和图像
         """
         self.db = db
+        self.langfuse_client = None # Langfuse client for manual tracing
         
         # 验证API密钥是否已设置
         if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "your_openai_api_key_here":
@@ -76,7 +79,47 @@ class LangChainAIService:
             
             # 初始化各种Chain
             self._init_chains()
+
+            # 初始化 Langfuse 客户端 (用于手动追踪)
+            if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+                try:
+                    self.langfuse_client = Langfuse(
+                        public_key=settings.LANGFUSE_PUBLIC_KEY,
+                        secret_key=settings.LANGFUSE_SECRET_KEY,
+                        host=settings.LANGFUSE_HOST,
+                        # release="your_app_version", # 可选: 应用版本
+                        debug=settings.DEBUG # 可选: 调试模式
+                    )
+                    logger.info("Langfuse client initialized successfully.")
+                except Exception as e:
+                    logger.error(f"Failed to initialize Langfuse client: {e}")
+                    self.langfuse_client = None # Ensure it's None if init fails
+            else:
+                logger.info("Langfuse public/secret keys not configured. Manual tracing will be disabled.")
     
+    def _get_langfuse_callback_handler(self, trace_name: str, user_id: Optional[str] = None, tags: Optional[List[str]] = None, session_id: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Optional[LangfuseCallbackHandler]:
+        """辅助函数，用于创建LangfuseCallbackHandler实例"""
+        if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+            try:
+                # 直接使用密钥和主机名创建 Handler，让其内部管理SDK实例
+                return LangfuseCallbackHandler(
+                    public_key=settings.LANGFUSE_PUBLIC_KEY,
+                    secret_key=settings.LANGFUSE_SECRET_KEY,
+                    host=settings.LANGFUSE_HOST,
+                    trace_name=trace_name,
+                    user_id=user_id,
+                    session_id=session_id or str(uuid.uuid4()), # Ensure a session_id
+                    tags=tags or ["langchain_service"],
+                    metadata=metadata
+                    # debug=settings.DEBUG # 考虑是否需要，根据LangfuseCallbackHandler是否支持
+                )
+            except Exception as e:
+                logger.error(f"Failed to create LangfuseCallbackHandler for trace '{trace_name}': {e}")
+                return None
+        else:
+            logger.warning(f"Langfuse public/secret keys not configured. Cannot create callback handler for '{trace_name}'.")
+            return None
+
     def _init_chains(self):
         """初始化各种LangChain链"""
         self._init_product_analysis_chain()
@@ -152,7 +195,7 @@ class LangChainAIService:
         # 创建链
         self.image_prompt_chain = prompt | self.llm | StrOutputParser()
     
-    async def analyze_product(self, title: str, content: str, url: str = "") -> Optional[AIAnalysisResult]:
+    async def analyze_product(self, title: str, content: str, url: str = "", post_id: Optional[str] = None) -> Optional[AIAnalysisResult]:
         """
         分析帖子内容，提取产品信息
         
@@ -160,6 +203,7 @@ class LangChainAIService:
             title: 帖子标题
             content: 帖子内容
             url: 帖子URL（可选）
+            post_id: 帖子的原始ID (用于Langfuse user_id)
             
         Returns:
             产品分析结果对象
@@ -168,13 +212,23 @@ class LangChainAIService:
             logger.warning("LangChain AI服务不可用，无法执行产品分析")
             return None
         
+        callbacks_list = []
+        langfuse_handler = self._get_langfuse_callback_handler(
+            trace_name="product_analysis_chain",
+            user_id=post_id or title, # Use post_id if available, else title
+            tags=["product_analysis", "langchain"],
+            metadata={"title": title, "url": url, "content_length": len(content)}
+        )
+        if langfuse_handler:
+            callbacks_list.append(langfuse_handler)
+            
         try:
             # 使用产品分析链分析内容
             result = await self.product_analysis_chain.ainvoke({
                 "title": title,
                 "content": content,
                 "url": url
-            })
+            }, config={"callbacks": callbacks_list})
             
             # 确保处理"未提及"的情况
             for field in result.model_fields:
@@ -187,13 +241,14 @@ class LangChainAIService:
             logger.error(f"产品分析过程中出错: {e}")
             return None
     
-    async def generate_tags(self, text: str, max_tags: int = 5) -> List[str]:
+    async def generate_tags(self, text: str, max_tags: int = 5, context_id: Optional[str] = None) -> List[str]:
         """
         生成与文本相关的标签
         
         Args:
             text: 输入文本
             max_tags: 最大标签数量
+            context_id: 相关上下文ID (如帖子ID，用于Langfuse user_id)
             
         Returns:
             标签列表
@@ -202,6 +257,16 @@ class LangChainAIService:
             logger.warning("LangChain AI服务不可用，无法生成标签")
             return []
         
+        callbacks_list = []
+        langfuse_handler = self._get_langfuse_callback_handler(
+            trace_name="generate_tags_llm",
+            user_id=context_id or f"text_hash_{hash(text[:100])}", # Use context_id or hash of text
+            tags=["tag_generation", "langchain"],
+            metadata={"max_tags": max_tags, "text_length": len(text)}
+        )
+        if langfuse_handler:
+            callbacks_list.append(langfuse_handler)
+
         try:
             # 创建提示
             prompt = f"""
@@ -214,7 +279,8 @@ class LangChainAIService:
             
             # 使用LLM生成标签
             message = await self.llm.ainvoke(
-                [{"role": "user", "content": prompt}]
+                [{"role": "user", "content": prompt}],
+                callbacks=callbacks_list # Pass handler to LLM invoke
             )
             result = message.content
             
@@ -284,24 +350,57 @@ class LangChainAIService:
         if not await self.can_generate_image():
             logger.warning("已达到每日图像生成限制")
             return None
-        
+
+        trace = None
+        generation = None
+        product_name_for_trace = "unknown_product"
+
         try:
             # 获取产品
             product = self.db.query(Product).filter(Product.id == product_id).first()
             if not product:
                 logger.warning(f"未找到ID为 {product_id} 的产品")
                 return None
-            
+            product_name_for_trace = product.name or f"product_id_{product_id}"
+
+            if self.langfuse_client:
+                trace = self.langfuse_client.trace(
+                    name="generate_product_image_process",
+                    user_id=str(product_id),
+                    metadata={"product_name": product_name_for_trace, "product_id": product_id},
+                    tags=["image_generation", "dall-e"]
+                )
+
             # 生成图像提示词
+            callbacks_list = []
+            image_prompt_handler = self._get_langfuse_callback_handler(
+                trace_name="image_prompt_generation_chain",
+                user_id=str(product_id), # Link to the product
+                tags=["image_prompt", "langchain"],
+                metadata={"product_name": product.name, "product_description_length": len(product.description or "")}
+            )
+            if image_prompt_handler:
+                if trace: # If manual trace exists, associate handler with it
+                    image_prompt_handler.trace_id = trace.id
+                callbacks_list.append(image_prompt_handler)
+
             prompt_result = await self.image_prompt_chain.ainvoke({
                 "product_name": product.name or "创新产品",
                 "product_description": product.description or "一个解决特定问题的产品",
                 "problem_solved": product.problem_solved or "提升用户体验的问题"
-            })
+            }, config={"callbacks": callbacks_list})
             
             # 清理提示词
-            prompt = prompt_result.strip().replace("\n", " ")
+            prompt = prompt_result.strip().replace("\\n", " ")
             logger.info(f"为产品 {product.name} 生成的图像提示词: {prompt}")
+
+            if trace: # Create generation under the manual trace
+                generation = trace.generation(
+                    name="dall-e_image_api_call",
+                    model="dall-e-2",
+                    prompt=prompt,
+                    model_parameters={"size": "512x512", "n": 1, "response_format": "url"}
+                )
             
             # 调用DALL-E API生成图像
             client = httpx.AsyncClient(timeout=60.0)
@@ -330,6 +429,9 @@ class LangChainAIService:
             if result and "data" in result and len(result["data"]) > 0:
                 dalle_image_url = result["data"][0]["url"]
                 
+                if generation: # End generation successfully
+                    generation.end(output={"image_url": dalle_image_url})
+
                 # 下载图片
                 logger.info(f"Downloading image from DALL-E URL: {dalle_image_url}")
                 async with httpx.AsyncClient(timeout=60.0) as download_client:
@@ -358,14 +460,29 @@ class LangChainAIService:
                 # 递增计数
                 self._increment_image_generation_count()
                 
+                if trace: # End trace successfully
+                    trace.update(metadata={"final_image_url": product.image_url})
+                
                 return product.image_url
             else:
                 logger.warning("图像生成API返回了无效的响应格式")
+                if generation: # End generation with an error
+                    generation.end(level="ERROR", status_message="Invalid API response format")
+                if trace:
+                    trace.update(metadata={"error": "Invalid API response format"})
                 return None
                 
         except Exception as e:
             logger.error(f"生成图像过程中出错: {e}")
+            if generation: # End generation with an error
+                generation.end(level="ERROR", status_message=str(e))
+            if trace: # End trace with error (or update with error info)
+                trace.update(metadata={"error": str(e), "status": "ERROR"})
             return None
+        finally:
+            if self.langfuse_client: # Ensure shutdown if client was created
+                 # self.langfuse_client.shutdown() # Consider if shutdown is needed per call or at app level
+                 pass # Langfuse client usually handles flushing on its own or on shutdown()
 
     async def analyze_featured_products(self, limit: int = 3) -> List[Tuple[Product, str]]:
         """
@@ -429,20 +546,37 @@ class LangChainAIService:
         if not await self.can_generate_image():
             logger.warning("已达到每日图像生成限制")
             return None
-        
+
+        # 用于 Langfuse 追踪的 product_name 或唯一标识符
+        trace_user_id = product_name or f"unknown_product_{str(uuid.uuid4())[:8]}"
+
         try:
+            # 为 image_prompt_chain 调用创建 Langfuse 回调
+            callbacks_list = []
+            image_prompt_handler = self._get_langfuse_callback_handler(
+                trace_name="concept_image_prompt_chain_v2", # 使用不同的追踪名称以区分
+                user_id=trace_user_id,
+                tags=["image_prompt", "langchain", "concept", "no_context_id_version"],
+                metadata={"product_name": product_name, "product_description_length": len(product_description or "")}
+            )
+            if image_prompt_handler:
+                callbacks_list.append(image_prompt_handler)
+            
             # 生成图像提示词
             prompt_result = await self.image_prompt_chain.ainvoke({
                 "product_name": product_name,
-                "product_description": product_description[:200] if product_description else "创新产品",
-                "problem_solved": "提升用户体验的问题"
-            })
+                "product_description": product_description[:200] if product_description else "创新产品", # 限制描述长度
+                "problem_solved": "提升用户体验的问题" # 保持与另一个版本一致或使其动态化
+            }, config={"callbacks": callbacks_list}) # <--- 添加了 callbacks
             
             # 清理提示词
-            prompt = prompt_result.strip().replace("\n", " ")
+            prompt = prompt_result.strip().replace("\\n", " ")
             logger.info(f"为产品 {product_name} 生成的图像提示词: {prompt}")
             
             # 调用DALL-E API生成图像
+            # 注意：直接的API调用 (非Langchain LLM调用) 不会自动通过CallbackHandler追踪。
+            # 如果需要追踪这部分，需要像另一个 generate_product_image 方法那样使用手动的 trace.generation()。
+            # 为了当前问题的修复，我们主要关注 Langchain 链的追踪。
             client = httpx.AsyncClient(timeout=60.0)
             headers = {
                 "Content-Type": "application/json",
@@ -501,4 +635,8 @@ class LangChainAIService:
                 
         except Exception as e:
             logger.error(f"生成产品概念图失败: {e}")
-            return None 
+            return None
+        finally:
+            if self.langfuse_client:
+                # self.langfuse_client.shutdown() # Consider if shutdown is needed per call or at app level
+                pass 

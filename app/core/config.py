@@ -14,7 +14,12 @@ class Settings(BaseSettings):
     
     # API密钥
     OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: Optional[str] = "gpt-3.5-turbo"
+    OPENAI_MODEL: Optional[str] = "gpt-4.1-nano"
+    
+    # Langfuse 配置
+    LANGFUSE_PUBLIC_KEY: Optional[str] = None
+    LANGFUSE_SECRET_KEY: Optional[str] = None
+    LANGFUSE_HOST: Optional[str] = "https://cloud.langfuse.com" # 默认指向 Langfuse Cloud
     
     # 爬虫配置
     SCRAPER_INTERVAL: int = 3600  # 默认每小时运行一次

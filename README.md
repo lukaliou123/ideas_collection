@@ -37,6 +37,22 @@
 - **AI接口**: OpenAI API (GPT模型)
 - **前端**: HTML, CSS, JavaScript (简单UI框架如Bootstrap)
 - **部署**: Docker (可选)
+- **LLM可观测性**: Langfuse (可选)
+
+## 3.1. Langfuse 集成说明
+
+Langfuse 提供了一个监控和分析 LLM API 调用的平台，集成了以下功能：
+
+- **追踪 LLM 调用**：记录所有 LangChain 框架的 LLM 调用
+- **成本监控**：跟踪 API 调用的花费和使用量
+- **性能分析**：查看延迟、成功率和错误统计
+- **调试**：通过可视化界面检查 LLM 调用链的每个步骤
+- **比较模型和提示**：对比不同的提示和模型的效果
+
+主要应用场景包括：
+- 产品分析（`analyze_product`）
+- 标签生成（`generate_tags`）
+- 概念图片提示词生成（`generate_product_image`）
 
 ## 4. 数据模型
 
@@ -176,6 +192,16 @@ product_tags
 1. 克隆项目仓库
 2. 安装依赖: `pip install -r requirements.txt`
 3. 配置环境变量 (API密钥等)
+   - 创建一个 `.env` 文件，并参考 `.env.example` (如果项目中有的话) 或以下内容进行配置:
+     ```
+     OPENAI_API_KEY="your_openai_api_key"
+     # ... 其他已有的环境变量 ...
+
+     # Langfuse (可选, 用于LLM可观测性)
+     LANGFUSE_PUBLIC_KEY="your_langfuse_public_key"
+     LANGFUSE_SECRET_KEY="your_langfuse_secret_key"
+     LANGFUSE_HOST="https://cloud.langfuse.com" # 如果使用自托管 Langfuse，请修改此地址
+     ```
 4. 初始化数据库: `python scripts/init_db.py`
 5. 运行开发服务器: `python main.py`
 

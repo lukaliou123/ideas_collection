@@ -210,8 +210,6 @@ class ProductService:
         # 清除现有标签关联
         product.tags = []
         
-        new_tags_added_to_session = False
-
         # 处理每个标签
         for tag_name in tag_names:
             if not tag_name or len(tag_name.strip()) == 0:
@@ -222,27 +220,26 @@ class ProductService:
             normalized_name = tag_name.strip().lower()
             logger.debug(f"Normalized tag name: '{normalized_name}'")
             
-            # 查找或创建标签
-            tag = self.db.query(Tag).filter(Tag.name == normalized_name).first()
+            # 查找或创建标签 (基于规范化名称的唯一性)
+            tag = self.db.query(Tag).filter(Tag.normalized_name == normalized_name).first()
             if not tag:
                 logger.info(f"Tag '{normalized_name}' not found, creating new tag.")
-                tag = Tag(name=tag_name.strip(), normalized_name=normalized_name)
+                # 确保原始名称也被存储，如果需要的话，或者只存储规范化名称并用于显示
+                tag = Tag(name=tag_name.strip(), normalized_name=normalized_name) 
                 self.db.add(tag)
-                new_tags_added_to_session = True
+                # No need for new_tags_added_to_session, commit handles all pending changes.
             else:
                 logger.debug(f"Found existing tag: '{normalized_name}' (ID: {tag.id})")
 
-            # 添加标签关联 (Ensure tag is in the session if it was just created)
+            # 添加标签关联
             if tag not in product.tags:
-                if tag not in self.db.object_session(product):
-                    self.db.add(tag)
                 product.tags.append(tag)
             else:
                 logger.debug(f"Tag '{normalized_name}' already associated with product {product.id}, skipping duplicate append.")
 
         logger.info(f"Final tag list for product {product.id} before commit: {[t.name for t in product.tags]}")
-        # 保存更改 (Commit includes new tags and associations)
-        self.db.commit()
+        # 事务将在调用此方法的地方（例如 process_post）的末尾统一提交，或者根据需要单独提交
+        # self.db.commit() # Commit is usually handled by the calling method or at the end of the request.
 
         # Refresh the product to load the tags correctly after commit
         try:
