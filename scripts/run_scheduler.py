@@ -79,6 +79,14 @@ def run_once(task_id=None):
             logger.info("开始执行产品处理任务...")
             result = TaskService.run_product_processing()
             logger.info(f"任务执行完成，处理了 {result} 条帖子")
+        elif task_id == "tags":
+            logger.info("开始执行标签自动合并任务...")
+            result = TaskService.run_tag_auto_merge()
+            logger.info(f"任务执行完成，合并了 {result} 个标签")
+        elif task_id == "featured":
+            logger.info("开始执行精选产品更新任务...")
+            result = TaskService.run_featured_products_update()
+            logger.info(f"任务执行完成，为 {result} 个产品生成了概念图")
         else:
             logger.error(f"未知任务ID: {task_id}")
             
@@ -106,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--task", 
         type=str, 
-        choices=["hackernews", "products"],
+        choices=["hackernews", "products", "tags", "featured"],
         help="指定要运行的任务ID，仅在--run-once时有效"
     )
     

@@ -13,6 +13,7 @@ from app.core.scheduler import scheduler
 from app.core.config import settings
 from app.services.hackernews_service import HackerNewsService
 from app.services.product_service import ProductService
+from app.services.tag_service import TagService
 from app.utils.logger import logger
 
 class TaskService:
@@ -26,6 +27,7 @@ class TaskService:
         # 如果启用了AI分析，注册产品处理任务
         if settings.ENABLE_AI_ANALYSIS:
             TaskService.register_product_processing_task()
+            TaskService.register_tag_merge_task()
             TaskService.register_featured_products_task()
         
         # 未来添加更多任务
@@ -59,9 +61,22 @@ class TaskService:
         )
     
     @staticmethod
+    def register_tag_merge_task():
+        """注册标签自动合并任务"""
+        # 使用cron触发器，在每天上午10:20执行（在产品处理完成后，精选产品更新前）
+        scheduler.add_job(
+            func=TaskService.run_tag_auto_merge,
+            job_id="auto_merge_tags",
+            cron_expression="20 10 * * *",
+            job_name="自动合并相似标签"
+        )
+        
+        logger.info("已注册标签自动合并任务，将在每天上午10:20执行")
+    
+    @staticmethod
     def register_featured_products_task():
         """注册精选产品更新任务"""
-        # 使用cron触发器，在每天上午10:30执行（在产品处理完成后）
+        # 使用cron触发器，在每天上午10:30执行（在标签合并完成后）
         scheduler.add_job(
             func=TaskService.run_featured_products_update,
             job_id="update_featured_products",
@@ -127,6 +142,32 @@ class TaskService:
             
         except Exception as e:
             logger.error(f"执行产品处理任务时出错: {e}")
+            # 打印完整的异常堆栈
+            import traceback
+            logger.error(traceback.format_exc())
+            return 0
+            
+        finally:
+            db.close()
+    
+    @staticmethod
+    def run_tag_auto_merge():
+        """执行标签自动合并任务"""
+        # 创建数据库会话
+        db = SessionLocal()
+        
+        try:
+            logger.info("开始执行标签自动合并任务...")
+            
+            # 使用默认阈值0.90进行自动合并
+            result = TagService.auto_merge_similar_tags(db, threshold=0.90)
+            merged_count = result.get('merged_count', 0)
+            
+            logger.info(f"标签自动合并任务执行完成，合并了 {merged_count} 个标签")
+            return merged_count
+            
+        except Exception as e:
+            logger.error(f"执行标签自动合并任务时出错: {e}")
             # 打印完整的异常堆栈
             import traceback
             logger.error(traceback.format_exc())

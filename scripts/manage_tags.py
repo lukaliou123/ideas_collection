@@ -45,7 +45,7 @@ def main():
     parser.add_argument(
         "--threshold",
         type=float,
-        default=0.90,
+        default=0.70,
         help="Similarity threshold (0.0 to 1.0) for auto-merging. Default: 0.90"
     )
 
