@@ -20,8 +20,23 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnablePassthrough
-from langfuse import Langfuse
-from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+
+# Langfuse 是可选依赖，如果导入失败不影响应用运行
+try:
+    from langfuse import Langfuse
+    from langfuse.langchain import CallbackHandler as LangfuseCallbackHandler
+    LANGFUSE_AVAILABLE = True
+except ImportError:
+    try:
+        # 尝试旧版本的导入路径
+        from langfuse import Langfuse
+        from langfuse.callback import CallbackHandler as LangfuseCallbackHandler
+        LANGFUSE_AVAILABLE = True
+    except ImportError:
+        LANGFUSE_AVAILABLE = False
+        Langfuse = None
+        LangfuseCallbackHandler = None
+        logger.warning("Langfuse not available. AI monitoring will be disabled.")
 
 from app.core.config import settings
 from app.utils.logger import logger
@@ -90,7 +105,7 @@ class LangChainAIService:
             self._init_chains()
 
             # 初始化 Langfuse 客户端 (用于手动追踪)
-            if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+            if LANGFUSE_AVAILABLE and settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
                 try:
                     self.langfuse_client = Langfuse(
                         public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -104,10 +119,16 @@ class LangChainAIService:
                     logger.error(f"Failed to initialize Langfuse client: {e}")
                     self.langfuse_client = None # Ensure it's None if init fails
             else:
-                logger.info("Langfuse public/secret keys not configured. Manual tracing will be disabled.")
+                if not LANGFUSE_AVAILABLE:
+                    logger.info("Langfuse package not available. Manual tracing will be disabled.")
+                else:
+                    logger.info("Langfuse public/secret keys not configured. Manual tracing will be disabled.")
     
     def _get_langfuse_callback_handler(self, trace_name: str, user_id: Optional[str] = None, tags: Optional[List[str]] = None, session_id: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> Optional[LangfuseCallbackHandler]:
         """辅助函数，用于创建LangfuseCallbackHandler实例"""
+        if not LANGFUSE_AVAILABLE:
+            return None
+            
         if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
             try:
                 # 直接使用密钥和主机名创建 Handler，让其内部管理SDK实例
@@ -126,7 +147,6 @@ class LangChainAIService:
                 logger.error(f"Failed to create LangfuseCallbackHandler for trace '{trace_name}': {e}")
                 return None
         else:
-            logger.warning(f"Langfuse public/secret keys not configured. Cannot create callback handler for '{trace_name}'.")
             return None
 
     def _init_chains(self):
