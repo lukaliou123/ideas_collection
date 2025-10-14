@@ -42,7 +42,7 @@ class TaskService:
         scheduler.add_job(
             func=TaskService.run_hackernews_collection,
             job_id="collect_hackernews",
-            cron_expression="0 10 * * *", 
+            cron_expression="0 16 * * *", 
             job_name="HackerNews每日收集"
         )
         
@@ -67,7 +67,7 @@ class TaskService:
         scheduler.add_job(
             func=TaskService.run_tag_auto_merge,
             job_id="auto_merge_tags",
-            cron_expression="20 10 * * *",
+            cron_expression="20 16 * * *",
             job_name="自动合并相似标签"
         )
         
@@ -80,7 +80,7 @@ class TaskService:
         scheduler.add_job(
             func=TaskService.run_featured_products_update,
             job_id="update_featured_products",
-            cron_expression="30 10 * * *",
+            cron_expression="30 16 * * *",
             job_name="更新首页精选产品"
         )
         

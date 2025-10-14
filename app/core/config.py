@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     """应用配置设置"""
     
     # 数据库配置
-    DATABASE_URL: str = Field(default="sqlite:///./app.db")
+    # 本地开发默认使用 SQLite，生产环境使用 PostgreSQL
+    DATABASE_URL: str = Field(default="sqlite:///./data/app.db")
     
     # API密钥
     OPENAI_API_KEY: Optional[str] = None
@@ -43,8 +44,18 @@ class Settings(BaseSettings):
         """验证数据库URL"""
         if not v:
             # 如果未设置，默认使用SQLite
-            return "sqlite:///./app.db"
+            return "sqlite:///./data/app.db"
         return v
+    
+    @property
+    def is_sqlite(self) -> bool:
+        """判断是否使用SQLite数据库"""
+        return self.DATABASE_URL.startswith("sqlite")
+    
+    @property
+    def is_postgresql(self) -> bool:
+        """判断是否使用PostgreSQL数据库"""
+        return self.DATABASE_URL.startswith("postgresql") or self.DATABASE_URL.startswith("postgres")
     
     model_config = {
         "env_file": ".env",

@@ -15,7 +15,7 @@ def list_posts():
     """列出已收集的帖子"""
     db = SessionLocal()
     try:
-        posts = db.query(Post).order_by(Post.collected_at.desc()).all()
+        posts = db.query(Post).order_by(Post.collected_at.asc()).all()
         
         print(f"\n找到 {len(posts)} 条帖子:\n")
         for post in posts:

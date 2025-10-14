@@ -60,7 +60,7 @@ class AIService:
         
         Args:
             messages: 对话消息列表
-            temperature: 温度参数，控制输出随机性
+            temperature: 温度参数，控制输出随机性（GPT-5模型不支持此参数）
             
         Returns:
             API响应
@@ -73,11 +73,15 @@ class AIService:
             "Authorization": f"Bearer {self.api_key}"
         }
         
+        # 构建payload，GPT-5模型不支持temperature参数
         payload = {
             "model": self.model,
-            "messages": messages,
-            "temperature": temperature
+            "messages": messages
         }
+        
+        # 只有非GPT-5模型才添加temperature参数
+        if not self.model.startswith("gpt-5"):
+            payload["temperature"] = temperature
         
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:

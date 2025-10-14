@@ -18,7 +18,7 @@ class HackerNewsClient:
     BASE_URL = "https://hacker-news.firebaseio.com/v0"
     
     # 获取的最大帖子数量
-    MAX_POSTS = 100
+    MAX_POSTS = 500
     
     # 最小点赞数
     MIN_POINTS = 5

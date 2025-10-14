@@ -1,19 +1,21 @@
 # 部署指南 - 创业产品信息收集系统
 
-本文档提供了部署创业产品信息收集系统的详细步骤，包括本地部署和Docker容器化部署。
+本文档提供了部署创业产品信息收集系统的详细步骤，包括本地部署、Docker容器化部署和Railway云部署。
 
 ## 目录
 1. [环境要求](#环境要求)
 2. [本地部署](#本地部署)
 3. [Docker部署](#docker部署)
-4. [环境变量配置](#环境变量配置)
-5. [系统监控](#系统监控)
-6. [常见问题](#常见问题)
+4. [Railway云部署](#railway云部署-推荐)
+5. [数据库迁移](#数据库迁移-sqlite-to-postgresql)
+6. [环境变量配置](#环境变量配置)
+7. [系统监控](#系统监控)
+8. [常见问题](#常见问题)
 
 ## 环境要求
 
 - Python 3.9+
-- SQLite 3
+- 数据库：SQLite 3（本地开发）或 PostgreSQL 12+（生产环境）
 - pip 包管理工具
 
 ## 本地部署
@@ -99,23 +101,139 @@ docker pull <your-username>/startup-product-collector
 docker run -d -p 8000:8000 --env-file .env --name product-collector <your-username>/startup-product-collector
 ```
 
+## Railway云部署 (推荐)
+
+Railway 是最适合本项目的云平台，提供：
+- ✅ PostgreSQL 托管数据库（数据持久化）
+- ✅ 自动部署和 CI/CD
+- ✅ 免费额度（Hobby Plan $5/月起）
+- ✅ 自动 HTTPS 和域名
+
+### 快速部署步骤
+
+1. **推送代码到 GitHub**
+   ```bash
+   git add .
+   git commit -m "feat: 准备部署到 Railway"
+   git push origin main
+   ```
+
+2. **在 Railway 创建项目**
+   - 访问 [Railway.app](https://railway.app/)
+   - 点击 "New Project" → "Deploy from GitHub repo"
+   - 选择你的仓库
+
+3. **添加 PostgreSQL 数据库**
+   - 点击 "New" → "Database" → "Add PostgreSQL"
+   - Railway 会自动设置 `DATABASE_URL` 环境变量
+
+4. **配置环境变量**
+   在 Railway Dashboard 设置：
+   - `OPENAI_API_KEY`: 你的 OpenAI API 密钥（必需）
+   - `ENABLE_SCHEDULER`: True（启用定时任务）
+   - `ENABLE_AI_ANALYSIS`: True（启用 AI 分析）
+   - 其他变量参考 `.env.example`
+
+5. **初始化数据库**
+   ```bash
+   # 使用 Railway CLI
+   railway run python scripts/init_db.py
+   railway run python scripts/add_sources.py
+   ```
+
+6. **生成域名**
+   - 在项目设置中点击 "Generate Domain"
+   - 访问生成的 URL 确认部署成功
+
+📖 **详细部署指南**: 查看 [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md)
+
+### 为什么选择 Railway？
+
+❌ **SQLite + Railway 不合适**：
+- Railway 容器是临时的，重启会丢失数据
+- 每次部署都会清空 SQLite 数据库
+- 无法保证数据持久化
+
+✅ **PostgreSQL + Railway 完美组合**：
+- 独立的数据库服务，数据永久保存
+- 自动备份和恢复
+- 适合生产环境
+- Railway 原生支持，配置简单
+
+## 数据库迁移 (SQLite to PostgreSQL)
+
+如果你有现有的 SQLite 数据需要迁移到 PostgreSQL：
+
+### 迁移步骤
+
+```bash
+# 1. 确保已安装 PostgreSQL 驱动
+pip install psycopg2-binary
+
+# 2. 获取目标数据库连接字符串
+# 从 Railway Dashboard → PostgreSQL → Variables → DATABASE_URL
+
+# 3. 运行迁移脚本
+python scripts/migrate_to_postgresql.py \
+  --source sqlite:///./data/app.db \
+  --target "postgresql://user:pass@host:5432/railway"
+
+# 4. 验证迁移结果
+# 脚本会自动验证数据完整性并显示统计信息
+```
+
+### 迁移功能
+- ✅ 自动迁移所有表和数据
+- ✅ 保持数据完整性和关系
+- ✅ 批量处理，高效快速
+- ✅ 自动验证迁移结果
+- ✅ 详细的进度显示和错误处理
+
+详细说明请参考脚本中的帮助信息：
+```bash
+python scripts/migrate_to_postgresql.py --help
+```
+
 ## 环境变量配置
 
 以下是应用使用的主要环境变量：
 
 | 变量名 | 描述 | 默认值 | 是否必需 |
 |-------|------|-------|---------|
-| DATABASE_URL | 数据库连接URL | sqlite:///./app.db | 是 |
+| DATABASE_URL | 数据库连接URL | sqlite:///./data/app.db | 是 |
 | OPENAI_API_KEY | OpenAI API密钥 | - | 是 |
-| OPENAI_MODEL | 使用的OpenAI模型 | gpt-3.5-turbo | 否 |
+| OPENAI_MODEL | 使用的OpenAI模型 | gpt-4.1-nano | 否 |
 | SCRAPER_INTERVAL | 爬虫运行间隔(秒) | 3600 | 否 |
 | REQUEST_TIMEOUT | HTTP请求超时(秒) | 30 | 否 |
 | USER_AGENT | 爬虫使用的User-Agent | Mozilla/5.0... | 否 |
 | ENABLE_SCHEDULER | 是否启用定时任务 | True | 否 |
 | ENABLE_AI_ANALYSIS | 是否启用AI分析 | True | 否 |
-| AI_ANALYSIS_MIN_POINTS | 分析帖子的最低点赞数 | 5 | 否 |
+| AI_ANALYSIS_MIN_POINTS | 分析帖子的最低点赞数 | 10 | 否 |
 | DEBUG | 是否启用调试模式 | False | 否 |
 | LOG_LEVEL | 日志级别 | INFO | 否 |
+| LANGFUSE_PUBLIC_KEY | Langfuse公钥（AI监控） | - | 否 |
+| LANGFUSE_SECRET_KEY | Langfuse密钥（AI监控） | - | 否 |
+| LANGFUSE_HOST | Langfuse服务器地址 | https://cloud.langfuse.com | 否 |
+
+### 数据库配置说明
+
+**本地开发（SQLite）：**
+```bash
+DATABASE_URL=sqlite:///./data/app.db
+```
+
+**生产环境（PostgreSQL）：**
+```bash
+# Railway 会自动设置，格式如下：
+DATABASE_URL=postgresql://user:password@host:5432/database
+```
+
+### 配置文件
+
+复制 `.env.example` 为 `.env` 并填入实际值：
+```bash
+cp .env.example .env
+```
 
 ## 系统监控
 
@@ -179,6 +297,20 @@ services:
           memory: 512M
 ```
 
+### 数据库切换
+
+应用自动检测数据库类型，无需额外配置：
+- SQLite：用于本地开发和测试
+- PostgreSQL：用于生产环境（Railway、Docker等）
+
+切换数据库只需修改 `DATABASE_URL` 环境变量即可。
+
 ---
+
+## 相关文档
+
+- [Railway 部署详细指南](./RAILWAY_DEPLOYMENT.md) - Railway 平台完整部署教程
+- [README.md](./README.md) - 项目介绍和功能说明
+- [.env.example](./.env.example) - 环境变量配置示例
 
 如有其他部署问题，请提交Issue或查阅项目文档。 

@@ -24,7 +24,7 @@ async def main():
     """脚本主函数"""
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='批量分析帖子生成产品信息')
-    parser.add_argument('--min-points', type=int, default=5, 
+    parser.add_argument('--min-points', type=int, default=0, 
                         help='分析帖子的最低点赞数要求 (默认: 5)')
     parser.add_argument('--limit', type=int, default=0,
                         help='处理的最大帖子数量，0表示不限制 (默认: 0)')

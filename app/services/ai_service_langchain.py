@@ -71,11 +71,20 @@ class LangChainAIService:
             self.is_available = True
             
             # 初始化LangChain LLM
-            self.llm = ChatOpenAI(
-                api_key=settings.OPENAI_API_KEY,
-                model=settings.OPENAI_MODEL or "gpt-4.1-nano",
-                temperature=0.2
-            )
+            # GPT-5模型不支持temperature参数，需要根据模型类型决定
+            if settings.OPENAI_MODEL and settings.OPENAI_MODEL.startswith("gpt-5"):
+                # GPT-5模型不支持temperature参数
+                self.llm = ChatOpenAI(
+                    api_key=settings.OPENAI_API_KEY,
+                    model=settings.OPENAI_MODEL or "gpt-4.1-nano"
+                )
+            else:
+                # 其他模型支持temperature参数
+                self.llm = ChatOpenAI(
+                    api_key=settings.OPENAI_API_KEY,
+                    model=settings.OPENAI_MODEL or "gpt-4.1-nano",
+                    temperature=0.2
+                )
             
             # 初始化各种Chain
             self._init_chains()
