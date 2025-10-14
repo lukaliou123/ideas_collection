@@ -10,9 +10,9 @@ dockerfilePath = "Dockerfile"
 # 启动命令
 startCommand = "python main.py"
 
-# 健康检查
-healthcheckPath = "/api"
-healthcheckTimeout = 100
+# 暂时禁用健康检查，避免启动时重启循环
+# healthcheckPath = "/api"
+# healthcheckTimeout = 100
 
 # 环境变量设置提示
 # 需要在 Railway Dashboard 中设置以下环境变量:
