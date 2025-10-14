@@ -3,11 +3,13 @@
 """
 import asyncio
 import logging
+import os
 from typing import Dict, Any, Callable, Optional, Coroutine
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.executors.pool import ThreadPoolExecutor
@@ -20,10 +22,26 @@ class TaskScheduler:
     
     def __init__(self):
         """初始化调度器"""
-        # 配置任务存储（使用SQLite）
-        jobstores = {
-            'default': SQLAlchemyJobStore(url=settings.DATABASE_URL)
-        }
+        # 配置任务存储
+        # 对于 PostgreSQL 使用数据库存储，对于 SQLite 使用内存存储（避免文件权限问题）
+        try:
+            if settings.is_postgresql:
+                # PostgreSQL：使用数据库持久化存储
+                jobstores = {
+                    'default': SQLAlchemyJobStore(url=settings.DATABASE_URL)
+                }
+                logger.info("调度器使用 PostgreSQL 存储任务")
+            else:
+                # SQLite 或其他：使用内存存储（重启后任务会重新注册）
+                jobstores = {
+                    'default': MemoryJobStore()
+                }
+                logger.info("调度器使用内存存储任务（非持久化）")
+        except Exception as e:
+            logger.warning(f"初始化调度器存储失败，使用内存存储: {e}")
+            jobstores = {
+                'default': MemoryJobStore()
+            }
         
         # 配置执行器
         executors = {
