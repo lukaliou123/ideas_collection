@@ -17,9 +17,13 @@ COPY . .
 
 # Create non-root user for security
 RUN adduser --disabled-password --gecos "" appuser && \
-    # 创建数据目录并设置权限
-    touch /app/app.db && \
+    # 创建数据目录（用于 SQLite，如果需要）
+    mkdir -p /app/data && \
+    # 设置权限
     chown -R appuser:appuser /app
+
+# 切换到非 root 用户
+USER appuser
 
 # Expose port
 EXPOSE 8000

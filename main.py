@@ -74,5 +74,8 @@ if __name__ == "__main__":
     # 从环境变量获取调试模式设置，默认为False
     debug = os.getenv("DEBUG", "False").lower() == "true"
     
+    # 从环境变量获取端口设置，默认为8000
+    port = int(os.getenv("PORT", "8000"))
+    
     # 启动服务器
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=debug) 
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=debug) 
