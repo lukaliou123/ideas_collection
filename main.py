@@ -44,18 +44,58 @@ async def api_root():
 @app.on_event("startup")
 async def startup_event():
     """应用启动时的事件处理"""
-    # 如果启用了定时任务，则启动调度器
-    if settings.ENABLE_SCHEDULER:
-        # 注册所有任务
-        TaskService.register_tasks()
-        # 启动调度器
-        TaskService.start_scheduler()
+    import logging
+    logger = logging.getLogger("app")
+    
+    try:
+        logger.info("=" * 60)
+        logger.info("应用启动中...")
+        logger.info(f"数据库 URL: {settings.DATABASE_URL[:20]}...")
+        logger.info(f"启用调度器: {settings.ENABLE_SCHEDULER}")
+        
+        # 自动初始化数据库（如果表不存在）
+        try:
+            from app.core.database import init_db
+            logger.info("检查数据库表...")
+            init_db()
+            logger.info("数据库表检查/初始化完成")
+        except Exception as db_error:
+            logger.warning(f"数据库初始化出现问题（可能已存在）: {db_error}")
+        
+        # 如果启用了定时任务，则启动调度器
+        if settings.ENABLE_SCHEDULER:
+            logger.info("开始注册定时任务...")
+            # 注册所有任务
+            TaskService.register_tasks()
+            logger.info("开始启动调度器...")
+            # 启动调度器
+            TaskService.start_scheduler()
+            logger.info("调度器启动成功")
+        
+        logger.info("应用启动完成")
+        logger.info("=" * 60)
+    except Exception as e:
+        logger.error("=" * 60)
+        logger.error(f"❌ 应用启动失败: {e}")
+        logger.error("=" * 60)
+        import traceback
+        traceback.print_exc()
+        # 不要抛出异常，让应用继续运行（但调度器可能不可用）
+        logger.warning("应用将在没有调度器的情况下继续运行")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭时的事件处理"""
-    # 关闭调度器
-    TaskService.shutdown_scheduler()
+    import logging
+    logger = logging.getLogger("app")
+    
+    try:
+        logger.info("应用关闭中...")
+        # 关闭调度器
+        TaskService.shutdown_scheduler()
+        logger.info("应用关闭完成")
+    except Exception as e:
+        logger.error(f"应用关闭时出错: {e}")
 
 if __name__ == "__main__":
     # 解析命令行参数

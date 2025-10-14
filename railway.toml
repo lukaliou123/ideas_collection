@@ -1,0 +1,32 @@
+# Railway 配置文件
+# 更多配置选项: https://docs.railway.app/deploy/config-as-code
+
+[build]
+# 使用 Dockerfile 构建
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# 启动命令
+startCommand = "python main.py"
+
+# 健康检查
+healthcheckPath = "/api"
+healthcheckTimeout = 100
+
+# 重启策略
+restartPolicyType = "on-failure"
+restartPolicyMaxRetries = 10
+
+# 环境变量设置提示
+# 需要在 Railway Dashboard 中设置以下环境变量:
+# - DATABASE_URL (自动设置，连接 PostgreSQL 插件后)
+# - OPENAI_API_KEY
+# - OPENAI_MODEL (可选)
+# - LANGFUSE_PUBLIC_KEY (可选)
+# - LANGFUSE_SECRET_KEY (可选)
+# - LANGFUSE_HOST (可选)
+# - ENABLE_SCHEDULER (建议设置为 True)
+# - ENABLE_AI_ANALYSIS (建议设置为 True)
+# - SCRAPER_INTERVAL (可选，默认 3600 秒)
+
