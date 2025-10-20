@@ -260,8 +260,9 @@ class ProductService:
             成功处理的帖子数量
         """
         # 获取未处理且符合点赞数要求的帖子
+        # 注意：processed 是 Integer 类型，0=未处理，1=已处理
         query = self.db.query(Post).filter(
-            Post.processed == False,
+            Post.processed == 0,
             Post.points >= min_points
         )
         
