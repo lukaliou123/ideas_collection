@@ -18,10 +18,10 @@ class HackerNewsClient:
     BASE_URL = "https://hacker-news.firebaseio.com/v0"
     
     # 获取的最大帖子数量
-    MAX_POSTS = 500
+    MAX_POSTS = 100
     
     # 最小点赞数
-    MIN_POINTS = 5
+    MIN_POINTS = 3
     
     def __init__(self, db: Session):
         """初始化客户端"""
